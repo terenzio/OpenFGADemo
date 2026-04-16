@@ -1,0 +1,44 @@
+services:
+  mariadb:
+    image: mariadb:11
+    environment:
+      MYSQL_ROOT_PASSWORD: openfga
+      MYSQL_DATABASE: openfga
+      MYSQL_USER: openfga
+      MYSQL_PASSWORD: openfga
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  openfga-migrate:
+    image: openfga/openfga:latest
+    command: migrate
+    environment:
+      OPENFGA_DATASTORE_ENGINE: mysql
+      OPENFGA_DATASTORE_URI: "openfga:openfga@tcp(mariadb:3306)/openfga?parseTime=true"
+    depends_on:
+      mariadb:
+        condition: service_healthy
+
+  openfga:
+    image: openfga/openfga:latest
+    command: run
+    environment:
+      OPENFGA_DATASTORE_ENGINE: mysql
+      OPENFGA_DATASTORE_URI: "openfga:openfga@tcp(mariadb:3306)/openfga?parseTime=true"
+      OPENFGA_PLAYGROUND_ENABLED: "true"
+    ports:
+      - "8080:8080"
+      - "3000:3000"
+    depends_on:
+      openfga-migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/grpc_health_probe", "-addr=:8081"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
