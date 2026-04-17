@@ -102,6 +102,14 @@ func (s *Store) ListDocumentsByIDs(ids []string) []Document {
 
 // --- Folder methods ---
 
+// DeleteFolder removes a folder from the store. It is a no-op when the
+// folder does not exist.
+func (s *Store) DeleteFolder(id string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.dirs, id)
+}
+
 // CreateFolder adds or replaces a folder in the store.
 func (s *Store) CreateFolder(f Folder) {
 	s.mu.Lock()

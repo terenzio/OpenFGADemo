@@ -3,6 +3,7 @@ module github.com/terenzio/OpenFGADemo
 go 1.25.0
 
 require (
+	github.com/go-chi/chi/v5 v5.2.5
 	github.com/openfga/go-sdk v0.8.0
 	github.com/openfga/language/pkg/go v0.2.1
 )
