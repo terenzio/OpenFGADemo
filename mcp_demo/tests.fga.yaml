@@ -41,3 +41,34 @@ tests:
           can_edit: true
           can_delete: true
           can_share: false
+  - name: Org member inherits viewer via folder parent (TupleToUserset across types)
+    check:
+      - user: user:eve
+        object: document:roadmap
+        assertions:
+          can_view: true
+          can_edit: false
+          can_share: false
+  - name: Direct editor on parent folder cascades can_edit and can_delete to child doc
+    check:
+      - user: user:charlie
+        object: document:roadmap
+        assertions:
+          can_edit: true
+          can_delete: true
+          can_share: false
+  - name: Wildcard grants can_view publicly but not can_edit
+    check:
+      - user: user:randomstranger
+        object: document:public-memo
+        assertions:
+          can_view: true
+          can_edit: false
+  - name: list_objects — which documents can alice view
+    list_objects:
+      - user: user:alice
+        type: document
+        assertions:
+          can_view:
+            - document:roadmap
+            - document:public-memo
