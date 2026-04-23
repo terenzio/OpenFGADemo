@@ -1,0 +1,43 @@
+name: Document Management Authorization Tests
+model_file: ./authorization-model.fga
+
+tuples:
+  # Organization membership
+  - user: user:eve
+    relation: member
+    object: organization:acme
+
+  # Folder & document hierarchy
+  - user: folder:company
+    relation: parent
+    object: folder:product
+  - user: folder:product
+    relation: parent
+    object: document:roadmap
+
+  # Ownership & direct assignments
+  - user: user:alice
+    relation: owner
+    object: folder:company
+  - user: user:charlie
+    relation: editor
+    object: folder:product
+  - user: organization:acme#member
+    relation: viewer
+    object: folder:product
+
+  # Wildcard public document
+  - user: user:*
+    relation: viewer
+    object: document:public-memo
+
+tests:
+  - name: Owner of top folder gets can_view/edit/delete via parent chain, but not can_share (share requires direct owner tuple)
+    check:
+      - user: user:alice
+        object: document:roadmap
+        assertions:
+          can_view: true
+          can_edit: true
+          can_delete: true
+          can_share: false
