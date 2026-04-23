@@ -14,9 +14,19 @@ type folder
     define editor: [user, organization#member] or owner or editor from parent
     define viewer: [user, user:*, organization#member] or editor or viewer from parent
 
+    define can_view:   viewer
+    define can_edit:   editor
+    define can_delete: editor
+    define can_share:  owner
+
 type document
   relations
     define parent: [folder]
     define owner: [user]
     define editor: [user, organization#member] or owner or editor from parent
     define viewer: [user, user:*, organization#member] or editor or viewer from parent
+
+    define can_view:   viewer
+    define can_edit:   editor
+    define can_delete: editor
+    define can_share:  owner
