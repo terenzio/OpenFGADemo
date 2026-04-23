@@ -8,6 +8,8 @@ services:
       MYSQL_PASSWORD: openfga
     ports:
       - "3306:3306"
+    volumes:
+      - mariadb-data:/var/lib/mysql
     healthcheck:
       test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
       interval: 5s
@@ -15,7 +17,7 @@ services:
       retries: 10
 
   openfga-migrate:
-    image: openfga/openfga:latest
+    image: openfga/openfga:v1.8.4
     command: migrate
     environment:
       OPENFGA_DATASTORE_ENGINE: mysql
@@ -25,7 +27,7 @@ services:
         condition: service_healthy
 
   openfga:
-    image: openfga/openfga:latest
+    image: openfga/openfga:v1.8.4
     command: run
     environment:
       OPENFGA_DATASTORE_ENGINE: mysql
@@ -42,3 +44,6 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+
+volumes:
+  mariadb-data:
