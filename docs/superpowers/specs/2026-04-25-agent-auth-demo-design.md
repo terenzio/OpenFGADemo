@@ -131,9 +131,13 @@ anywhere — to demonstrate that being `editor` does not imply `can_delete`.
 
 Five tests, each exercising a distinct branch of the model:
 
-1. **Alice can view, edit, delete, share `file:report`** — owner cascade plus
-   the global `user:*` capability gates. Confirms humans are not penalized by
-   the new intersection.
+1. **Alice can view, edit, delete `file:report` via cascade — but cannot
+   share it.** Owner cascade gives her `editor`/`viewer`; the global `user:*`
+   capability tuples let her pass the intersection on `can_edit`/`can_delete`.
+   `can_share` is `owner` with no cascade, so even the root-folder owner
+   cannot share a deeply-nested file without a direct owner tuple. Confirms
+   humans are not penalized by the new intersection while preserving
+   sharing's direct-only semantics.
 
 2. **`agent:scribe` can edit `file:report` but cannot delete it** —
    `editor` (cascaded from `folder:projects`) ✓; `edit_authorized` (cascaded
