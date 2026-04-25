@@ -63,3 +63,12 @@ tests:
           can_edit: true
           can_delete: true
           can_share: false
+  - name: agent:scribe is editor + edit_authorized via projects → can_edit, but no delete_authorized → cannot delete
+    check:
+      - user: agent:scribe
+        object: file:report
+        assertions:
+          can_view: true
+          can_edit: true
+          can_delete: false
+          can_share: false
