@@ -1,0 +1,65 @@
+name: Agent Authorization Demo Tests
+model_file: ./authorization-model.fga
+
+tuples:
+  # Folder/file hierarchy
+  - user: folder:root
+    relation: parent
+    object: folder:projects
+  - user: folder:projects
+    relation: parent
+    object: file:report
+  - user: folder:root
+    relation: parent
+    object: file:secret
+
+  # Human ownership: alice owns root (cascades down)
+  - user: user:alice
+    relation: owner
+    object: folder:root
+
+  # Agent → user delegation pointers (informational)
+  - user: user:alice
+    relation: principal
+    object: agent:scribe
+  - user: user:alice
+    relation: principal
+    object: agent:janitor
+
+  # Agents granted editor role
+  - user: agent:scribe
+    relation: editor
+    object: folder:projects
+  - user: agent:janitor
+    relation: editor
+    object: folder:root
+
+  # Global gate: humans always authorized everywhere
+  - user: user:*
+    relation: edit_authorized
+    object: folder:root
+  - user: user:*
+    relation: delete_authorized
+    object: folder:root
+
+  # Bounded agent grants
+  - user: agent:scribe
+    relation: edit_authorized
+    object: folder:projects
+  - user: agent:janitor
+    relation: edit_authorized
+    object: folder:projects
+  - user: agent:janitor
+    relation: delete_authorized
+    object: folder:projects
+
+tests:
+  - name: Alice (owner of root) can view, edit, delete file:report via cascade — but not share (share requires direct owner tuple)
+    check:
+      - user: user:alice
+        object: file:report
+        assertions:
+          can_view: true
+          can_edit: true
+          can_delete: true
+          can_share: false
