@@ -1,0 +1,38 @@
+model
+  schema 1.1
+
+type user
+
+type agent
+  relations
+    define principal: [user]
+
+type folder
+  relations
+    define owner: [user]
+    define parent: [folder]
+    define editor: [user, agent] or owner or editor from parent
+    define viewer: [user, user:*, agent] or editor or viewer from parent
+
+    define edit_authorized:   [user:*, agent] or edit_authorized from parent
+    define delete_authorized: [user:*, agent] or delete_authorized from parent
+
+    define can_view:   viewer
+    define can_edit:   editor and edit_authorized
+    define can_delete: editor and delete_authorized
+    define can_share:  owner
+
+type file
+  relations
+    define parent: [folder]
+    define owner: [user]
+    define editor: [user, agent] or owner or editor from parent
+    define viewer: [user, user:*, agent] or editor or viewer from parent
+
+    define edit_authorized:   [user:*, agent] or edit_authorized from parent
+    define delete_authorized: [user:*, agent] or delete_authorized from parent
+
+    define can_view:   viewer
+    define can_edit:   editor and edit_authorized
+    define can_delete: editor and delete_authorized
+    define can_share:  owner
