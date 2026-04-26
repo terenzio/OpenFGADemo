@@ -93,3 +93,11 @@ tests:
         assertions:
           can_edit: false
           can_delete: false
+  - name: list_objects(agent:scribe, file, can_edit) returns only file:report (intersection enforced during enumeration)
+    list_objects:
+      - user: agent:scribe
+        type: file
+        assertions:
+          can_edit:
+            - file:report
+          can_delete: []
