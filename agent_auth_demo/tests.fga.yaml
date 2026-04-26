@@ -72,3 +72,12 @@ tests:
           can_edit: true
           can_delete: false
           can_share: false
+  - name: agent:scribe has no editor or edit_authorized on root → cannot edit file:secret
+    check:
+      - user: agent:scribe
+        object: file:secret
+        assertions:
+          can_view: false
+          can_edit: false
+          can_delete: false
+          can_share: false
