@@ -27,7 +27,7 @@ define can_delete: editor and delete_authorized
 define can_share:  owner
 ```
 
-Two ideas combined:
+Three ideas combined:
 
 1. **Intersection (`and`).** Being an `editor` is not enough on its own.
    A separate capability relation must also evaluate to true. If either
@@ -41,6 +41,11 @@ Two ideas combined:
    means a single grant `(agent:bot, edit_authorized, folder:projects)`
    covers every descendant — and only those descendants. Move the file
    somewhere else, lose the capability.
+
+> Note: the model also declares `agent.principal: [user]` to record which
+> user an agent acts for. It is informational only — useful for audit and
+> application-side guardrails — and does not appear in any permission
+> expression in this demo.
 
 The result: granting an agent `editor` on a folder allows it to view
 content, but a separate explicit grant per capability is required to
