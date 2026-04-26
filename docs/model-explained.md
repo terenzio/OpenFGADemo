@@ -1,6 +1,6 @@
 # Authorization Model Explained
 
-This document walks through `model/authorization-model.fga` line by line,
+This document walks through `model_basic_demo/authorization-model.fga` line by line,
 explaining every concept with concrete examples from the demo data.
 
 ## The Full Model

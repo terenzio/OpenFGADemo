@@ -2,10 +2,10 @@
 
 This directory contains a document-management authorization model authored
 with guidance from the [`openfga-mcp`](https://github.com/openfga) MCP server.
-It sits beside the parent repo's hand-written model
-([`model/authorization-model.fga`](../model/authorization-model.fga)) as a
-comparison: **what does MCP-assisted modeling add that a human working from
-scratch might miss?**
+It sits beside the basic hand-written model
+([`model_basic_demo/authorization-model.fga`](../../model_basic_demo/authorization-model.fga))
+as a comparison: **what does MCP-assisted modeling add that a human working
+from scratch might miss?**
 
 Short answer: explicit `can_*` permission relations.
 
