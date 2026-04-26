@@ -81,3 +81,15 @@ tests:
           can_edit: false
           can_delete: false
           can_share: false
+  - name: agent:janitor delete_authorized is bounded to projects/ subtree
+    check:
+      - user: agent:janitor
+        object: file:report
+        assertions:
+          can_edit: true
+          can_delete: true
+      - user: agent:janitor
+        object: file:secret
+        assertions:
+          can_edit: false
+          can_delete: false
