@@ -1,9 +1,4 @@
 ---
-marp: true
-title: OpenFGA Workshop — Fine-Grained Authorization for Modern Apps
-theme: default
-paginate: true
----
 
 # OpenFGA Workshop
 

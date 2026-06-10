@@ -142,8 +142,8 @@ func seedDemoData(ctx context.Context, s *store.Store, fgaClient httpapi.FGAClie
 
 	// --- FGA tuples ---
 	tuples := []httpapi.TupleWrite{
-		// Organization ownership and membership.
-		{User: "user:alice", Relation: "owner", Object: "organization:acme"},
+		// Organization membership. (The basic model's `organization` type
+		// only defines `member`; org ownership lives in the in-memory store.)
 		{User: "user:eve", Relation: "member", Object: "organization:acme"},
 		{User: "user:frank", Relation: "member", Object: "organization:acme"},
 

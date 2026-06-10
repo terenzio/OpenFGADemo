@@ -247,7 +247,8 @@ make up
 
 Boots MariaDB and the OpenFGA server. The visual
 [OpenFGA Playground](https://openfga.dev/docs/getting-started/setup-openfga/playground)
-is now at <http://localhost:3000>.
+is now at <http://localhost:3000/playground> (the bare root `http://localhost:3000`
+returns a 404 — the Playground is served under the `/playground` path).
 
 ### 4b. Run the interactive CLI walkthrough
 
@@ -262,9 +263,14 @@ explanations. Press Enter to advance through each step.
 
 ```bash
 # Terminal 1 — seed demo data and start the HTTP server on :8000
-make seed
 make serve
 ```
+
+`make serve` seeds the demo data and serves in the **same** process. The
+document store is in-memory and per-process, so seeding must happen in the
+process that serves — running `make seed` separately would populate a store
+that disappears when that short-lived process exits, leaving the server with
+no documents (and every lookup returning `404`).
 
 ```bash
 # Terminal 2 — call the API
