@@ -2,15 +2,15 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Populate the empty `mcp_demo/` directory with an OpenFGA authorization model, a `.fga.yaml` test file, and a README — authored under guidance from the `openfga-mcp` MCP server — showing how MCP-assisted modeling extends the parent repo's hand-written model with explicit `can_*` permission relations.
+**Goal:** Populate the empty `models/mcp-guide/` directory with an OpenFGA authorization model, a `.fga.yaml` test file, and a README — authored under guidance from the `openfga-mcp` MCP server — showing how MCP-assisted modeling extends the parent repo's hand-written model with explicit `can_*` permission relations.
 
-**Architecture:** Three static artifacts, no build step. The `.fga` model file is a pure extension of `model/authorization-model.fga` (adds `can_view`, `can_edit`, `can_delete`, `can_share` on `folder` and `document`). The `.fga.yaml` file declares inline tuples mirroring the parent's seed data and runs assertions via `fga model test`. The README narrates the MCP workflow and diffs the two models.
+**Architecture:** Three static artifacts, no build step. The `.fga` model file is a pure extension of `models/basic/authorization-model-basic.fga` (adds `can_view`, `can_edit`, `can_delete`, `can_share` on `folder` and `document`). The `.fga.yaml` file declares inline tuples mirroring the parent's seed data and runs assertions via `fga model test`. The README narrates the MCP workflow and diffs the two models.
 
 **Tech Stack:** OpenFGA DSL, `fga` CLI (for validation/testing), YAML. No new language runtime; does not require Docker/MariaDB/OpenFGA server.
 
 **Spec:** `docs/superpowers/specs/2026-04-23-mcp-demo-authorization-model-design.md`
 
-**Working directory for all `fga` commands:** `/Users/terence/Documents/GitHub/OpenFGADemo/mcp_demo`
+**Working directory for all `fga` commands:** `/Users/terence/Documents/GitHub/OpenFGADemo/models/mcp-guide`
 
 ---
 
@@ -32,11 +32,11 @@ Then re-run `fga version` to confirm.
 
 ## File Structure
 
-Three files will be created in `/Users/terence/Documents/GitHub/OpenFGADemo/mcp_demo/`:
+Three files will be created in `/Users/terence/Documents/GitHub/OpenFGADemo/models/mcp-guide/`:
 
 | File | Responsibility |
 |---|---|
-| `authorization-model.fga` | OpenFGA DSL model: `user`, `organization`, `folder`, `document` types, plus `can_*` permission relations on `folder` and `document`. |
+| `authorization-model-mcp-guide.fga` | OpenFGA DSL model: `user`, `organization`, `folder`, `document` types, plus `can_*` permission relations on `folder` and `document`. |
 | `tests.fga.yaml` | Inline tuple fixtures + `check` / `list_objects` assertions. Consumed by `fga model test`. |
 | `README.md` | Narrative: what the demo is, which MCP context was queried, diff vs parent model, and how to run tests. |
 
@@ -47,9 +47,9 @@ Three files will be created in `/Users/terence/Documents/GitHub/OpenFGADemo/mcp_
 Goal: produce a `.fga` file that validates and matches the parent repo's model byte-for-byte in semantics (before adding `can_*`). This establishes the floor the demo extends from.
 
 **Files:**
-- Create: `mcp_demo/authorization-model.fga`
+- Create: `models/mcp-guide/authorization-model-mcp-guide.fga`
 
-- [ ] **Step 1.1: Create `mcp_demo/authorization-model.fga` with parent-equivalent content**
+- [ ] **Step 1.1: Create `models/mcp-guide/authorization-model-mcp-guide.fga` with parent-equivalent content**
 
 File content:
 
@@ -83,16 +83,16 @@ type document
 Run (from repo root):
 
 ```bash
-fga model validate --file mcp_demo/authorization-model.fga
+fga model validate --file models/mcp-guide/authorization-model-mcp-guide.fga
 ```
 
-Expected: the CLI prints `{"is_valid":true}` (or equivalent "model is valid" output) and exits 0. If the CLI complains about syntax, compare the file to `model/authorization-model.fga` — they should be identical except this one lives under `mcp_demo/`.
+Expected: the CLI prints `{"is_valid":true}` (or equivalent "model is valid" output) and exits 0. If the CLI complains about syntax, compare the file to `models/basic/authorization-model-basic.fga` — they should be identical except this one lives under `models/mcp-guide/`.
 
 - [ ] **Step 1.3: Commit**
 
 ```bash
-git add mcp_demo/authorization-model.fga
-git commit -m "feat(mcp_demo): scaffold parent-equivalent authorization model"
+git add models/mcp-guide/authorization-model-mcp-guide.fga
+git commit -m "feat(mcp-guide): scaffold parent-equivalent authorization model"
 ```
 
 ---
@@ -102,7 +102,7 @@ git commit -m "feat(mcp_demo): scaffold parent-equivalent authorization model"
 Goal: extend the model with the four `can_*` permissions recommended by the MCP guide (section 6, "Adding permissions"). This is the *one semantic change* vs parent.
 
 **Files:**
-- Modify: `mcp_demo/authorization-model.fga`
+- Modify: `models/mcp-guide/authorization-model-mcp-guide.fga`
 
 - [ ] **Step 2.1: Add `can_*` relations to `folder`**
 
@@ -145,7 +145,7 @@ type document
 Run:
 
 ```bash
-fga model validate --file mcp_demo/authorization-model.fga
+fga model validate --file models/mcp-guide/authorization-model-mcp-guide.fga
 ```
 
 Expected: `{"is_valid":true}` / exits 0. If invalid, the most likely issue is indentation — `can_*` lines must be indented the same as `define editor`/`viewer`.
@@ -153,8 +153,8 @@ Expected: `{"is_valid":true}` / exits 0. If invalid, the most likely issue is in
 - [ ] **Step 2.4: Commit**
 
 ```bash
-git add mcp_demo/authorization-model.fga
-git commit -m "feat(mcp_demo): add can_view/can_edit/can_delete/can_share permissions"
+git add models/mcp-guide/authorization-model-mcp-guide.fga
+git commit -m "feat(mcp-guide): add can_view/can_edit/can_delete/can_share permissions"
 ```
 
 ---
@@ -164,17 +164,17 @@ git commit -m "feat(mcp_demo): add can_view/can_edit/can_delete/can_share permis
 Goal: Establish the `.fga.yaml` test harness with seed tuples and one passing smoke test that exercises all four new `can_*` permissions for an owner.
 
 **Files:**
-- Create: `mcp_demo/tests.fga.yaml`
+- Create: `models/mcp-guide/tests.fga.yaml`
 
 - [ ] **Step 3.1: Write the test file**
 
-Create `mcp_demo/tests.fga.yaml` with this exact content.
+Create `models/mcp-guide/tests.fga.yaml` with this exact content.
 
 Note on the expected assertions below: alice is owner of `folder:company`, which is the top of the parent chain to `document:roadmap`. She gets `can_view/can_edit/can_delete` via the role-implication + `editor from parent` chain. But `can_share: owner` depends on a **direct** `(user, owner, object)` tuple, and alice has no such tuple on `document:roadmap` — so `can_share` is false.
 
 ```yaml
 name: Document Management Authorization Tests
-model_file: ./authorization-model.fga
+model_file: ./authorization-model-mcp-guide.fga
 
 tuples:
   # Organization membership
@@ -223,7 +223,7 @@ tests:
 Run from repo root:
 
 ```bash
-cd mcp_demo && fga model test --tests tests.fga.yaml
+cd models/mcp-guide && fga model test --tests tests.fga.yaml
 ```
 
 Expected: **1 test passed, 0 failed**, exit 0. If this fails, the most likely causes are:
@@ -233,8 +233,8 @@ Expected: **1 test passed, 0 failed**, exit 0. If this fails, the most likely ca
 - [ ] **Step 3.3: Commit**
 
 ```bash
-git add mcp_demo/tests.fga.yaml
-git commit -m "test(mcp_demo): add seed tuples and owner smoke test"
+git add models/mcp-guide/tests.fga.yaml
+git commit -m "test(mcp-guide): add seed tuples and owner smoke test"
 ```
 
 ---
@@ -244,7 +244,7 @@ git commit -m "test(mcp_demo): add seed tuples and owner smoke test"
 Goal: cover TupleToUserset via org membership, direct editor cascade, wildcard, and `list_objects`. Append each as a separate test entry; run the full suite after each add.
 
 **Files:**
-- Modify: `mcp_demo/tests.fga.yaml`
+- Modify: `models/mcp-guide/tests.fga.yaml`
 
 - [ ] **Step 4.1: Add the org-member test**
 
@@ -268,7 +268,7 @@ Rationale: eve is member of `organization:acme`; `organization:acme#member` is a
 Run:
 
 ```bash
-cd mcp_demo && fga model test --tests tests.fga.yaml
+cd models/mcp-guide && fga model test --tests tests.fga.yaml
 ```
 
 Expected: **2 tests passed, 0 failed**, exit 0.
@@ -293,7 +293,7 @@ Rationale: charlie is `(user:charlie, editor, folder:product)`; `document:roadma
 - [ ] **Step 4.4: Run, confirm 3 pass**
 
 ```bash
-cd mcp_demo && fga model test --tests tests.fga.yaml
+cd models/mcp-guide && fga model test --tests tests.fga.yaml
 ```
 
 Expected: **3 tests passed, 0 failed**, exit 0.
@@ -317,7 +317,7 @@ Rationale: `(user:*, viewer, document:public-memo)` matches any user type (inclu
 - [ ] **Step 4.6: Run, confirm 4 pass**
 
 ```bash
-cd mcp_demo && fga model test --tests tests.fga.yaml
+cd models/mcp-guide && fga model test --tests tests.fga.yaml
 ```
 
 Expected: **4 tests passed, 0 failed**, exit 0.
@@ -342,7 +342,7 @@ Rationale: alice inherits viewer on `document:roadmap` via the folder chain, and
 - [ ] **Step 4.8: Run full suite, confirm 5 pass**
 
 ```bash
-cd mcp_demo && fga model test --tests tests.fga.yaml
+cd models/mcp-guide && fga model test --tests tests.fga.yaml
 ```
 
 Expected: **5 tests passed, 0 failed**, exit 0.
@@ -352,20 +352,20 @@ If `list_objects` fails with an ordering mismatch, note that `fga` compares the 
 - [ ] **Step 4.9: Commit**
 
 ```bash
-git add mcp_demo/tests.fga.yaml
-git commit -m "test(mcp_demo): add org-member, editor-cascade, wildcard, list_objects cases"
+git add models/mcp-guide/tests.fga.yaml
+git commit -m "test(mcp-guide): add org-member, editor-cascade, wildcard, list_objects cases"
 ```
 
 ---
 
 ## Task 5: Write the README
 
-Goal: produce `mcp_demo/README.md` narrating the MCP workflow, the diff vs the parent model, and how to run the tests.
+Goal: produce `models/mcp-guide/README.md` narrating the MCP workflow, the diff vs the parent model, and how to run the tests.
 
 **Files:**
-- Create: `mcp_demo/README.md`
+- Create: `models/mcp-guide/README.md`
 
-- [ ] **Step 5.1: Create `mcp_demo/README.md`**
+- [ ] **Step 5.1: Create `models/mcp-guide/README.md`**
 
 File content:
 
@@ -375,7 +375,7 @@ File content:
 This directory contains a document-management authorization model authored
 with guidance from the [`openfga-mcp`](https://github.com/openfga) MCP server.
 It sits beside the parent repo's hand-written model
-([`model/authorization-model.fga`](../model/authorization-model.fga)) as a
+([`models/basic/authorization-model-basic.fga`](../models/basic/authorization-model-basic.fga)) as a
 comparison: **what does MCP-assisted modeling add that a human working from
 scratch might miss?**
 
@@ -387,7 +387,7 @@ Short answer: explicit `can_*` permission relations.
 
 | File | Purpose |
 |---|---|
-| `authorization-model.fga` | DSL model. Same types and base relations as parent, plus four `can_*` permissions. |
+| `authorization-model-mcp-guide.fga` | DSL model. Same types and base relations as parent, plus four `can_*` permissions. |
 | `tests.fga.yaml` | Inline tuples + `check` and `list_objects` assertions. Run with `fga model test`. |
 | `README.md` | This file. |
 
@@ -470,7 +470,7 @@ brew install openfga/tap/fga    # macOS
 Run the test suite:
 
 ```bash
-cd mcp_demo
+cd models/mcp-guide
 fga model test --tests tests.fga.yaml
 ```
 
@@ -502,12 +502,12 @@ The test file contains five cases covering:
 - [ ] **Step 5.2: Sanity-check the README**
 
 Verify:
-- All links (`../model/authorization-model.fga`, `../docs/model-explained.md`, `../README.md`) resolve to existing files.
+- All links (`../models/basic/authorization-model-basic.fga`, `../docs/model-explained.md`, `../README.md`) resolve to existing files.
 - The `fga model test` command in the README matches what Task 4 verified.
 - The "5 tests passed" claim matches reality: re-run once more from repo root:
 
 ```bash
-cd mcp_demo && fga model test --tests tests.fga.yaml
+cd models/mcp-guide && fga model test --tests tests.fga.yaml
 ```
 
 Expected: **5 tests passed, 0 failed**, exit 0.
@@ -515,8 +515,8 @@ Expected: **5 tests passed, 0 failed**, exit 0.
 - [ ] **Step 5.3: Commit**
 
 ```bash
-git add mcp_demo/README.md
-git commit -m "docs(mcp_demo): add README with MCP workflow narrative and usage"
+git add models/mcp-guide/README.md
+git commit -m "docs(mcp-guide): add README with MCP workflow narrative and usage"
 ```
 
 ---
@@ -528,21 +528,21 @@ git commit -m "docs(mcp_demo): add README with MCP workflow narrative and usage"
 Run:
 
 ```bash
-ls -1 mcp_demo/
+ls -1 models/mcp-guide/
 ```
 
 Expected output (order may vary):
 
 ```
 README.md
-authorization-model.fga
+authorization-model-mcp-guide.fga
 tests.fga.yaml
 ```
 
 - [ ] **Step 6.2: Run the full test suite one last time**
 
 ```bash
-cd mcp_demo && fga model test --tests tests.fga.yaml
+cd models/mcp-guide && fga model test --tests tests.fga.yaml
 ```
 
 Expected: **5 tests passed, 0 failed**, exit 0.
@@ -555,7 +555,7 @@ Run:
 git status
 ```
 
-Expected: either clean working tree, or only the pre-existing `docker-compose.yml` modification that was present before this work started. Nothing under `mcp_demo/` should be untracked or unstaged.
+Expected: either clean working tree, or only the pre-existing `docker-compose.yml` modification that was present before this work started. Nothing under `models/mcp-guide/` should be untracked or unstaged.
 
 ---
 

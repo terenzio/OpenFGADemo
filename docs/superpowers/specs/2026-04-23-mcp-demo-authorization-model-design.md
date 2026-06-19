@@ -1,18 +1,18 @@
 # Design: MCP-Assisted Authorization Model Demo
 
 **Date:** 2026-04-23
-**Location:** `mcp_demo/`
+**Location:** `models/mcp-guide/`
 
 ## Purpose
 
 Demonstrate authoring an OpenFGA authorization model for a document management
 system **with guidance from the `openfga-mcp` MCP server**. The artifact is
-self-contained inside `mcp_demo/` and sits alongside the parent repo's
+self-contained inside `models/mcp-guide/` and sits alongside the parent repo's
 hand-written model as a comparison: what does MCP-assisted modeling add that a
 human working from scratch might miss?
 
 The demo intentionally targets the **same scenario** as the parent
-(`model/authorization-model.fga`) so the comparison is direct, and extends it
+(`models/basic/authorization-model-basic.fga`) so the comparison is direct, and extends it
 in the specific way the MCP guide recommends: explicit `can_*` permission
 relations, which the parent model does not have.
 
@@ -27,11 +27,11 @@ relations, which the parent model does not have.
 
 ## Artifacts
 
-Three files in `mcp_demo/`:
+Three files in `models/mcp-guide/`:
 
 ```
-mcp_demo/
-├── authorization-model.fga   # DSL model: parent model + can_* permissions
+models/mcp-guide/
+├── authorization-model-mcp-guide.fga   # DSL model: parent model + can_* permissions
 ├── tests.fga.yaml            # inline tuples + check / list_objects assertions
 └── README.md                 # MCP-workflow narrative, diff vs parent, how to run
 ```
@@ -138,8 +138,8 @@ Four sections:
    (`"authorization model for a document management system"`).
 3. **What changed vs parent** — a short diff table: parent lacks `can_*`, MCP
    guide section 6 says *"Always define permissions in the authorization
-   models,"* we added four. Links back to `model/authorization-model.fga`.
-4. **How to run** — `brew install openfga/tap/fga` then `cd mcp_demo &&
+   models,"* we added four. Links back to `models/basic/authorization-model-basic.fga`.
+4. **How to run** — `brew install openfga/tap/fga` then `cd models/mcp-guide &&
    fga model test --tests tests.fga.yaml`.
 
 No separate "architecture" or "model explained" section — parent's

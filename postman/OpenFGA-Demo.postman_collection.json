@@ -1,0 +1,676 @@
+{
+  "info": {
+    "name": "OpenFGA ReBAC Demo (8 Chapters)",
+    "_postman_id": "f9a1c2d4-0e6b-4a3f-9c2e-0a1b2c3d4e5f",
+    "description": "Step-by-step Postman walkthrough mirroring cmd/cli/main.go — an 8-chapter teaching demo of Relationship-Based Access Control (ReBAC) with OpenFGA.\n\nHow to use:\n1. Start OpenFGA so it listens on http://localhost:8080 (the CLI's FGA_API_URL default).\n2. Run Chapter 1 → \"Create Store\" first — its test script saves the new store_id into the collection variable automatically.\n3. Run Chapter 1 → \"Write Authorization Model\" next — its test script saves model_id automatically.\n4. Run Chapters 2–8 top to bottom. Each Check request documents the expected ALLOWED/DENIED result and the reasoning (the same narration the CLI prints).\n\nThe embedded model is the \"basic\" model the CLI loads (models/basic/authorization-model-basic.fga): types user, organization, folder, document with owner/parent/editor/viewer relations.\n\nRe-running / replays: OpenFGA's /write endpoint is transactional and NOT idempotent — writing a tuple that already exists fails the whole batch with HTTP 400 'write_failed_due_to_invalid_input' (cannot write a tuple which already exists). To replay the demo from scratch, re-run Chapter 1 → Create Store for a fresh store. To replay just Chapter 6 on the same store, run Appendix → 'Reset Chapter 6' first to delete its tuples.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "store_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "model_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Chapter 1 — Bootstrap",
+      "description": "Create a new OpenFGA store and write the authorization model. Run \"Create Store\" then \"Write Authorization Model\" first — both auto-capture IDs into collection variables.",
+      "item": [
+        {
+          "name": "Create Store",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Save the new store id into the collection variable so every",
+                  "// later request can reference {{store_id}} automatically.",
+                  "var json = pm.response.json();",
+                  "if (json && json.id) {",
+                  "    pm.collectionVariables.set('store_id', json.id);",
+                  "    console.log('store_id =', json.id);",
+                  "}",
+                  "pm.test('store created', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "    pm.expect(json).to.have.property('id');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"openfga-demo-postman\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/stores",
+              "host": ["{{base_url}}"],
+              "path": ["stores"]
+            },
+            "description": "SDK: CreateStore (internal/fga/bootstrap.go).\nCreates a new store and returns its id. The test script saves that id into the {{store_id}} collection variable."
+          }
+        },
+        {
+          "name": "Write Authorization Model",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Save the model id so write/check/list-objects/expand can pin it.",
+                  "var json = pm.response.json();",
+                  "if (json && json.authorization_model_id) {",
+                  "    pm.collectionVariables.set('model_id', json.authorization_model_id);",
+                  "    console.log('model_id =', json.authorization_model_id);",
+                  "}",
+                  "pm.test('model written', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "    pm.expect(json).to.have.property('authorization_model_id');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"schema_version\": \"1.1\",\n  \"type_definitions\": [\n    {\n      \"type\": \"user\"\n    },\n    {\n      \"type\": \"organization\",\n      \"relations\": {\n        \"member\": { \"this\": {} }\n      },\n      \"metadata\": {\n        \"relations\": {\n          \"member\": {\n            \"directly_related_user_types\": [ { \"type\": \"user\" } ]\n          }\n        }\n      }\n    },\n    {\n      \"type\": \"folder\",\n      \"relations\": {\n        \"owner\": { \"this\": {} },\n        \"parent\": { \"this\": {} },\n        \"editor\": {\n          \"union\": {\n            \"child\": [\n              { \"this\": {} },\n              { \"computedUserset\": { \"relation\": \"owner\" } },\n              { \"tupleToUserset\": { \"tupleset\": { \"relation\": \"parent\" }, \"computedUserset\": { \"relation\": \"editor\" } } }\n            ]\n          }\n        },\n        \"viewer\": {\n          \"union\": {\n            \"child\": [\n              { \"this\": {} },\n              { \"computedUserset\": { \"relation\": \"editor\" } },\n              { \"tupleToUserset\": { \"tupleset\": { \"relation\": \"parent\" }, \"computedUserset\": { \"relation\": \"viewer\" } } }\n            ]\n          }\n        }\n      },\n      \"metadata\": {\n        \"relations\": {\n          \"owner\": { \"directly_related_user_types\": [ { \"type\": \"user\" } ] },\n          \"parent\": { \"directly_related_user_types\": [ { \"type\": \"folder\" } ] },\n          \"editor\": { \"directly_related_user_types\": [ { \"type\": \"user\" }, { \"type\": \"organization\", \"relation\": \"member\" } ] },\n          \"viewer\": { \"directly_related_user_types\": [ { \"type\": \"user\" }, { \"type\": \"user\", \"wildcard\": {} }, { \"type\": \"organization\", \"relation\": \"member\" } ] }\n        }\n      }\n    },\n    {\n      \"type\": \"document\",\n      \"relations\": {\n        \"parent\": { \"this\": {} },\n        \"owner\": { \"this\": {} },\n        \"editor\": {\n          \"union\": {\n            \"child\": [\n              { \"this\": {} },\n              { \"computedUserset\": { \"relation\": \"owner\" } },\n              { \"tupleToUserset\": { \"tupleset\": { \"relation\": \"parent\" }, \"computedUserset\": { \"relation\": \"editor\" } } }\n            ]\n          }\n        },\n        \"viewer\": {\n          \"union\": {\n            \"child\": [\n              { \"this\": {} },\n              { \"computedUserset\": { \"relation\": \"editor\" } },\n              { \"tupleToUserset\": { \"tupleset\": { \"relation\": \"parent\" }, \"computedUserset\": { \"relation\": \"viewer\" } } }\n            ]\n          }\n        }\n      },\n      \"metadata\": {\n        \"relations\": {\n          \"parent\": { \"directly_related_user_types\": [ { \"type\": \"folder\" } ] },\n          \"owner\": { \"directly_related_user_types\": [ { \"type\": \"user\" } ] },\n          \"editor\": { \"directly_related_user_types\": [ { \"type\": \"user\" }, { \"type\": \"organization\", \"relation\": \"member\" } ] },\n          \"viewer\": { \"directly_related_user_types\": [ { \"type\": \"user\" }, { \"type\": \"user\", \"wildcard\": {} }, { \"type\": \"organization\", \"relation\": \"member\" } ] }\n        }\n      }\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/stores/{{store_id}}/authorization-models",
+              "host": ["{{base_url}}"],
+              "path": ["stores", "{{store_id}}", "authorization-models"]
+            },
+            "description": "SDK: WriteAuthorizationModel (internal/fga/bootstrap.go).\nThe CLI reads models/basic/authorization-model-basic.fga (DSL) and transforms it to this JSON. Model rule recap: owner implies editor implies viewer; 'editor/viewer from parent' inherit through folders; organization#member grants group access; user:* is a public-viewer wildcard.\nThe test script saves authorization_model_id into {{model_id}}."
+          }
+        },
+        {
+          "name": "List Stores",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/stores",
+              "host": ["{{base_url}}"],
+              "path": ["stores"]
+            },
+            "description": "Supporting read endpoint: list all stores on the server."
+          }
+        },
+        {
+          "name": "Get Store",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/stores/{{store_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["stores", "{{store_id}}"]
+            },
+            "description": "Supporting read endpoint: fetch metadata for the current store."
+          }
+        },
+        {
+          "name": "Read Authorization Models",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/stores/{{store_id}}/authorization-models",
+              "host": ["{{base_url}}"],
+              "path": ["stores", "{{store_id}}", "authorization-models"]
+            },
+            "description": "Supporting read endpoint: list all authorization models written to this store (newest first)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Chapter 2 — Direct Permissions",
+      "description": "Users can be directly assigned roles on objects. owner implies editor, editor implies viewer — so an owner can automatically view and edit.",
+      "item": [
+        {
+          "name": "Write Tuple — alice owner document:roadmap",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"writes\": {\n    \"tuple_keys\": [\n      { \"user\": \"user:alice\", \"relation\": \"owner\", \"object\": \"document:roadmap\" }\n    ]\n  },\n  \"authorization_model_id\": \"{{model_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/stores/{{store_id}}/write",
+              "host": ["{{base_url}}"],
+              "path": ["stores", "{{store_id}}", "write"]
+            },
+            "description": "SDK: WriteTuples. Makes alice the owner of document:roadmap."
+          }
+        },
+        {
+          "name": "Check — alice viewer document:roadmap (ALLOWED)",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tuple_key\": { \"user\": \"user:alice\", \"relation\": \"viewer\", \"object\": \"document:roadmap\" },\n  \"authorization_model_id\": \"{{model_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/stores/{{store_id}}/check",
+              "host": ["{{base_url}}"],
+              "path": ["stores", "{{store_id}}", "check"]
+            },
+            "description": "Expected: ALLOWED. Because alice is owner, owner implies editor, editor implies viewer."
+          }
+        },
+        {
+          "name": "Check — bob viewer document:roadmap (DENIED)",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tuple_key\": { \"user\": \"user:bob\", \"relation\": \"viewer\", \"object\": \"document:roadmap\" },\n  \"authorization_model_id\": \"{{model_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/stores/{{store_id}}/check",
+              "host": ["{{base_url}}"],
+              "path": ["stores", "{{store_id}}", "check"]
+            },
+            "description": "Expected: DENIED. Because bob has no relationship to document:roadmap."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Chapter 3 — Folder Inheritance",
+      "description": "Documents inherit permissions from their parent folder. 'editor from parent' means if you're editor on the folder, you're editor on any document inside it.",
+      "item": [
+        {
+          "name": "Write Tuples — parent + charlie editor folder:product",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"writes\": {\n    \"tuple_keys\": [\n      { \"user\": \"folder:product\", \"relation\": \"parent\", \"object\": \"document:roadmap\" },\n      { \"user\": \"user:charlie\", \"relation\": \"editor\", \"object\": \"folder:product\" }\n    ]\n  },\n  \"authorization_model_id\": \"{{model_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/stores/{{store_id}}/write",
+              "host": ["{{base_url}}"],
+              "path": ["stores", "{{store_id}}", "write"]
+            },
+            "description": "Places document:roadmap under folder:product and makes charlie editor of the folder."
+          }
+        },
+        {
+          "name": "Check — charlie editor document:roadmap (ALLOWED)",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tuple_key\": { \"user\": \"user:charlie\", \"relation\": \"editor\", \"object\": \"document:roadmap\" },\n  \"authorization_model_id\": \"{{model_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/stores/{{store_id}}/check",
+              "host": ["{{base_url}}"],
+              "path": ["stores", "{{store_id}}", "check"]
+            },
+            "description": "Expected: ALLOWED. charlie is editor on folder:product, document:roadmap's parent is folder:product, 'editor from parent' grants it."
+          }
+        },
+        {
+          "name": "Check — charlie viewer document:roadmap (ALLOWED)",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tuple_key\": { \"user\": \"user:charlie\", \"relation\": \"viewer\", \"object\": \"document:roadmap\" },\n  \"authorization_model_id\": \"{{model_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/stores/{{store_id}}/check",
+              "host": ["{{base_url}}"],
+              "path": ["stores", "{{store_id}}", "check"]
+            },
+            "description": "Expected: ALLOWED. editor implies viewer, so charlie can also view."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Chapter 4 — Nested Folders",
+      "description": "Permissions flow through nested folder hierarchies. folder:company is parent of folder:product, which is parent of document:roadmap, so permissions cascade through the chain.",
+      "item": [
+        {
+          "name": "Write Tuples — company hierarchy + diana viewer",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"writes\": {\n    \"tuple_keys\": [\n      { \"user\": \"user:alice\", \"relation\": \"owner\", \"object\": \"folder:company\" },\n      { \"user\": \"folder:company\", \"relation\": \"parent\", \"object\": \"folder:product\" },\n      { \"user\": \"user:diana\", \"relation\": \"viewer\", \"object\": \"folder:company\" }\n    ]\n  },\n  \"authorization_model_id\": \"{{model_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/stores/{{store_id}}/write",
+              "host": ["{{base_url}}"],
+              "path": ["stores", "{{store_id}}", "write"]
+            },
+            "description": "alice owns folder:company, folder:company is parent of folder:product, diana views folder:company."
+          }
+        },
+        {
+          "name": "Check — diana viewer folder:product (ALLOWED)",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tuple_key\": { \"user\": \"user:diana\", \"relation\": \"viewer\", \"object\": \"folder:product\" },\n  \"authorization_model_id\": \"{{model_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/stores/{{store_id}}/check",
+              "host": ["{{base_url}}"],
+              "path": ["stores", "{{store_id}}", "check"]
+            },
+            "description": "Expected: ALLOWED. diana is viewer on folder:company, parent of folder:product, 'viewer from parent' grants it."
+          }
+        },
+        {
+          "name": "Check — diana viewer document:roadmap (ALLOWED)",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tuple_key\": { \"user\": \"user:diana\", \"relation\": \"viewer\", \"object\": \"document:roadmap\" },\n  \"authorization_model_id\": \"{{model_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/stores/{{store_id}}/check",
+              "host": ["{{base_url}}"],
+              "path": ["stores", "{{store_id}}", "check"]
+            },
+            "description": "Expected: ALLOWED. Two-hop inheritance: folder:company -> folder:product -> document:roadmap."
+          }
+        },
+        {
+          "name": "Check — diana editor document:roadmap (DENIED)",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tuple_key\": { \"user\": \"user:diana\", \"relation\": \"editor\", \"object\": \"document:roadmap\" },\n  \"authorization_model_id\": \"{{model_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/stores/{{store_id}}/check",
+              "host": ["{{base_url}}"],
+              "path": ["stores", "{{store_id}}", "check"]
+            },
+            "description": "Expected: DENIED. viewer does not imply editor — diana can only view, not edit."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Chapter 5 — Groups via Usersets",
+      "description": "Instead of granting access user-by-user, grant access to an entire group. organization#member as viewer on a folder gives all members viewer access.",
+      "item": [
+        {
+          "name": "Write Tuples — acme members + acme#member viewer folder:product",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"writes\": {\n    \"tuple_keys\": [\n      { \"user\": \"user:eve\", \"relation\": \"member\", \"object\": \"organization:acme\" },\n      { \"user\": \"user:frank\", \"relation\": \"member\", \"object\": \"organization:acme\" },\n      { \"user\": \"organization:acme#member\", \"relation\": \"viewer\", \"object\": \"folder:product\" }\n    ]\n  },\n  \"authorization_model_id\": \"{{model_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/stores/{{store_id}}/write",
+              "host": ["{{base_url}}"],
+              "path": ["stores", "{{store_id}}", "write"]
+            },
+            "description": "Adds eve and frank to organization:acme, grants acme#member viewer on folder:product."
+          }
+        },
+        {
+          "name": "Check — eve viewer document:roadmap (ALLOWED)",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tuple_key\": { \"user\": \"user:eve\", \"relation\": \"viewer\", \"object\": \"document:roadmap\" },\n  \"authorization_model_id\": \"{{model_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/stores/{{store_id}}/check",
+              "host": ["{{base_url}}"],
+              "path": ["stores", "{{store_id}}", "check"]
+            },
+            "description": "Expected: ALLOWED. eve is member of acme, acme#member is viewer on folder:product, folder:product is parent of document:roadmap."
+          }
+        },
+        {
+          "name": "Check — frank viewer document:roadmap (ALLOWED)",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tuple_key\": { \"user\": \"user:frank\", \"relation\": \"viewer\", \"object\": \"document:roadmap\" },\n  \"authorization_model_id\": \"{{model_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/stores/{{store_id}}/check",
+              "host": ["{{base_url}}"],
+              "path": ["stores", "{{store_id}}", "check"]
+            },
+            "description": "Expected: ALLOWED. frank is also a member of acme, same path as eve."
+          }
+        },
+        {
+          "name": "Write Tuple — add grace to organization:acme",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"writes\": {\n    \"tuple_keys\": [\n      { \"user\": \"user:grace\", \"relation\": \"member\", \"object\": \"organization:acme\" }\n    ]\n  },\n  \"authorization_model_id\": \"{{model_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/stores/{{store_id}}/write",
+              "host": ["{{base_url}}"],
+              "path": ["stores", "{{store_id}}", "write"]
+            },
+            "description": "Adds grace to organization:acme — no new folder tuples needed."
+          }
+        },
+        {
+          "name": "Check — grace viewer document:roadmap (ALLOWED)",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tuple_key\": { \"user\": \"user:grace\", \"relation\": \"viewer\", \"object\": \"document:roadmap\" },\n  \"authorization_model_id\": \"{{model_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/stores/{{store_id}}/check",
+              "host": ["{{base_url}}"],
+              "path": ["stores", "{{store_id}}", "check"]
+            },
+            "description": "Expected: ALLOWED. grace automatically gets access via acme membership — no per-user grants needed."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Chapter 6 — Public Sharing (Wildcards)",
+      "description": "Wildcard grants give access to everyone, like a public link. user:* as viewer means any user can view the document.",
+      "item": [
+        {
+          "name": "Write Tuples — alice owner + user:* viewer document:public-memo",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"writes\": {\n    \"tuple_keys\": [\n      { \"user\": \"user:alice\", \"relation\": \"owner\", \"object\": \"document:public-memo\" },\n      { \"user\": \"user:*\", \"relation\": \"viewer\", \"object\": \"document:public-memo\" }\n    ]\n  },\n  \"authorization_model_id\": \"{{model_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/stores/{{store_id}}/write",
+              "host": ["{{base_url}}"],
+              "path": ["stores", "{{store_id}}", "write"]
+            },
+            "description": "alice creates a public memo: alice owns it, everyone (user:*) can view it.\n\nNote: /write is non-idempotent. Running this a second time on the same store returns HTTP 400 'cannot write a tuple which already exists' (alice already owns document:public-memo). To replay, run Appendix → 'Reset Chapter 6 (delete public-memo tuples)' first, or start over with Chapter 1 → Create Store."
+          }
+        },
+        {
+          "name": "Check — randomstranger viewer document:public-memo (ALLOWED)",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tuple_key\": { \"user\": \"user:randomstranger\", \"relation\": \"viewer\", \"object\": \"document:public-memo\" },\n  \"authorization_model_id\": \"{{model_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/stores/{{store_id}}/check",
+              "host": ["{{base_url}}"],
+              "path": ["stores", "{{store_id}}", "check"]
+            },
+            "description": "Expected: ALLOWED. user:* is viewer, so any user (including randomstranger) can view."
+          }
+        },
+        {
+          "name": "Check — randomstranger editor document:public-memo (DENIED)",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tuple_key\": { \"user\": \"user:randomstranger\", \"relation\": \"editor\", \"object\": \"document:public-memo\" },\n  \"authorization_model_id\": \"{{model_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/stores/{{store_id}}/check",
+              "host": ["{{base_url}}"],
+              "path": ["stores", "{{store_id}}", "check"]
+            },
+            "description": "Expected: DENIED. wildcard only grants viewer, not editor — randomstranger cannot edit."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Chapter 7 — Reverse Queries (ListObjects)",
+      "description": "Instead of asking 'can user X access object Y?', ask 'which objects of type T can user X access?' — the reverse query.",
+      "item": [
+        {
+          "name": "ListObjects — documents diana can view",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"document\",\n  \"relation\": \"viewer\",\n  \"user\": \"user:diana\",\n  \"authorization_model_id\": \"{{model_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/stores/{{store_id}}/list-objects",
+              "host": ["{{base_url}}"],
+              "path": ["stores", "{{store_id}}", "list-objects"]
+            },
+            "description": "Which documents can diana view? Returns objects of type document where diana has the viewer relation."
+          }
+        },
+        {
+          "name": "ListObjects — folders eve can view",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"folder\",\n  \"relation\": \"viewer\",\n  \"user\": \"user:eve\",\n  \"authorization_model_id\": \"{{model_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/stores/{{store_id}}/list-objects",
+              "host": ["{{base_url}}"],
+              "path": ["stores", "{{store_id}}", "list-objects"]
+            },
+            "description": "Which folders can eve view?"
+          }
+        },
+        {
+          "name": "ListObjects — documents alice can view",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"document\",\n  \"relation\": \"viewer\",\n  \"user\": \"user:alice\",\n  \"authorization_model_id\": \"{{model_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/stores/{{store_id}}/list-objects",
+              "host": ["{{base_url}}"],
+              "path": ["stores", "{{store_id}}", "list-objects"]
+            },
+            "description": "Which documents can alice view?"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Chapter 8 — Expand (Resolution Tree)",
+      "description": "Expand shows WHY a permission exists by returning the full resolution tree — all paths that grant the relationship.",
+      "item": [
+        {
+          "name": "Expand — viewer on document:roadmap",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tuple_key\": { \"relation\": \"viewer\", \"object\": \"document:roadmap\" },\n  \"authorization_model_id\": \"{{model_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/stores/{{store_id}}/expand",
+              "host": ["{{base_url}}"],
+              "path": ["stores", "{{store_id}}", "expand"]
+            },
+            "description": "SDK: Expand. Returns the userset tree for viewer on document:roadmap — the union of direct users, editor (which folds in owner + editor-from-parent), and viewer-from-parent."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Appendix — Other tuple ops",
+      "description": "Reading and deleting tuples, plus store cleanup — endpoints not exercised in the CLI narration but part of the OpenFGA API surface.",
+      "item": [
+        {
+          "name": "Read Tuples — all for document:roadmap",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tuple_key\": { \"object\": \"document:roadmap\" }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/stores/{{store_id}}/read",
+              "host": ["{{base_url}}"],
+              "path": ["stores", "{{store_id}}", "read"]
+            },
+            "description": "Reads stored relationship tuples. The tuple_key filter is optional — omit it to page through every tuple in the store; here we filter to document:roadmap. Note: /read returns directly-written tuples, not computed/inherited ones (use /expand or /check for those)."
+          }
+        },
+        {
+          "name": "Delete Tuple — alice owner document:roadmap",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deletes\": {\n    \"tuple_keys\": [\n      { \"user\": \"user:alice\", \"relation\": \"owner\", \"object\": \"document:roadmap\" }\n    ]\n  },\n  \"authorization_model_id\": \"{{model_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/stores/{{store_id}}/write",
+              "host": ["{{base_url}}"],
+              "path": ["stores", "{{store_id}}", "write"]
+            },
+            "description": "SDK: DeleteTuples. Deletes a tuple via the same /write endpoint using a 'deletes' block. After running this, re-run the Chapter 2 'alice viewer' check — it should now be DENIED."
+          }
+        },
+        {
+          "name": "Reset Chapter 6 (delete public-memo tuples)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// OpenFGA /write is atomic AND non-idempotent for BOTH writes and",
+                  "// deletes: a batch fails entirely if any tuple is already-present",
+                  "// (write) or already-absent (delete). Chapter 6's two tuples can be",
+                  "// in different states (e.g. alice:owner committed but the wildcard",
+                  "// never did, after a failed Ch6 write). So delete each one in its OWN",
+                  "// request and swallow the 'does not exist' 400 — making reset idempotent.",
+                  "var base = pm.variables.replaceIn('{{base_url}}');",
+                  "var store = pm.variables.replaceIn('{{store_id}}');",
+                  "var model = pm.variables.replaceIn('{{model_id}}');",
+                  "var tuples = [",
+                  "  { user: 'user:alice', relation: 'owner', object: 'document:public-memo' },",
+                  "  { user: 'user:*', relation: 'viewer', object: 'document:public-memo' }",
+                  "];",
+                  "tuples.forEach(function (tk) {",
+                  "  pm.sendRequest({",
+                  "    url: base + '/stores/' + store + '/write',",
+                  "    method: 'POST',",
+                  "    header: { 'Content-Type': 'application/json' },",
+                  "    body: { mode: 'raw', raw: JSON.stringify({ deletes: { tuple_keys: [tk] }, authorization_model_id: model }) }",
+                  "  }, function (err, res) {",
+                  "    if (err) {",
+                  "      console.log('reset: error deleting ' + tk.user + ' (ignored):', err);",
+                  "    } else if (res.code === 200) {",
+                  "      console.log('reset: deleted ' + tk.user + '#' + tk.relation + '@' + tk.object);",
+                  "    } else {",
+                  "      console.log('reset: ' + tk.user + ' not present (already clean), code ' + res.code);",
+                  "    }",
+                  "  });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tuple_key\": { \"object\": \"document:public-memo\" }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/stores/{{store_id}}/read",
+              "host": ["{{base_url}}"],
+              "path": ["stores", "{{store_id}}", "read"]
+            },
+            "description": "Idempotently clears Chapter 6's tuples so its 'Write Tuples' request can be replayed on the same store.\n\nHow it works: the PRE-REQUEST SCRIPT deletes 'user:alice owner document:public-memo' and 'user:* viewer document:public-memo' in SEPARATE /write calls, ignoring the HTTP 400 'cannot delete a tuple which does not exist' for any that were never committed (OpenFGA deletes are atomic + non-idempotent, so bundling them in one /write would abort on the first missing tuple and delete nothing). The visible request then reads back document:public-memo — expect an empty 'tuples' array once both are gone.\n\nAfter this, re-run Chapter 6 → Write Tuples; it should return 200."
+          }
+        },
+        {
+          "name": "Delete Store",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/stores/{{store_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["stores", "{{store_id}}"]
+            },
+            "description": "Tears down the demo store. Run this last to clean up."
+          }
+        }
+      ]
+    }
+  ]
+}

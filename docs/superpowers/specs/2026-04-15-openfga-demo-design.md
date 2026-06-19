@@ -49,7 +49,7 @@ Build a teaching-oriented demo program that shows how to use [OpenFGA](https://o
 
 ## The Authorization Model
 
-Single source of truth: `model/authorization-model.fga`. Both binaries read and upload it at startup.
+Single source of truth: `models/basic/authorization-model-basic.fga`. Both binaries read and upload it at startup.
 
 ```dsl
 model
@@ -187,7 +187,7 @@ OpenFGADemo/
 ├── go.mod / go.sum
 ├── Makefile                         # up, down, cli, serve, seed, demo, test
 ├── model/
-│   └── authorization-model.fga
+│   └── authorization-model-basic.fga
 ├── cmd/
 │   ├── cli/main.go
 │   └── server/main.go

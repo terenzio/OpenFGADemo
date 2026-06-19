@@ -1,7 +1,7 @@
 # Design: Agent Authorization Demo
 
 **Date:** 2026-04-25
-**Location:** `agent_auth_demo/`
+**Location:** `models/ai-agent/`
 
 ## Purpose
 
@@ -25,7 +25,7 @@ delegable to agents.
 
 - No Go code, HTTP server, Docker, or seed binary. Pure model + tests + README.
 - No conditions, custom roles, modules, or time-bounded grants.
-- No richness from the parent/`mcp_demo/` demos: no organizations, no
+- No richness from the parent/`models/mcp-guide/` demos: no organizations, no
   organization memberships, no comments/drafts/teams. Four types only.
 - No "agent owns a file" or agent-to-agent delegation. Agents are leaves.
 
@@ -84,9 +84,9 @@ type file
 | `can_edit: editor and edit_authorized` | Intersection is what makes this default-deny for agents. The role alone is not enough; the capability gate must also pass. |
 | `can_share: owner` (no intersection) | Sharing redistributes access. Agents must never be able to do this — even if a user added the agent as `editor`. |
 
-### Comparison to `mcp_demo/`
+### Comparison to `models/mcp-guide/`
 
-| Concept | `mcp_demo/` | `agent_auth_demo/` |
+| Concept | `models/mcp-guide/` | `models/ai-agent/` |
 |---|---|---|
 | Principals | `user` only | `user` + `agent` |
 | `can_edit` | `editor` (unconditional alias) | `editor and edit_authorized` (intersection) |
@@ -162,8 +162,8 @@ Five tests, each exercising a distinct branch of the model:
 ## Artifacts
 
 ```
-agent_auth_demo/
-├── authorization-model.fga   # the model above
+models/ai-agent/
+├── authorization-model-ai-agent.fga   # the model above
 ├── tests.fga.yaml            # the tuples + 5 tests above
 └── README.md                 # below
 ```
@@ -175,16 +175,16 @@ Four sections:
 1. **What this is** — one paragraph framing the demo as "OpenFGA model for
    AI agents acting on behalf of users, with default-deny on destructive ops
    and bounded delegation via intersection." Contrasts briefly with
-   `mcp_demo/`.
+   `models/mcp-guide/`.
 2. **The pattern** — explain the
    `can_edit: editor and edit_authorized` intersection, why it produces
    default-deny for agents while staying transparent for humans (the
    `user:*` global grant), and how `or edit_authorized from parent` makes
    per-folder grants scope automatically.
-3. **What's different vs `mcp_demo/`** — the comparison table from the
+3. **What's different vs `models/mcp-guide/`** — the comparison table from the
    "Comparison" section above.
 4. **How to run** — `brew install openfga/tap/fga` (if needed) then
-   `cd agent_auth_demo && fga model test --tests tests.fga.yaml`.
+   `cd models/ai-agent && fga model test --tests tests.fga.yaml`.
 
 ## Testing methodology
 

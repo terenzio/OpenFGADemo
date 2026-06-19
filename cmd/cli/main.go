@@ -27,7 +27,7 @@ func main() {
 	flag.Parse()
 
 	apiURL := envOrDefault("FGA_API_URL", "http://localhost:8080")
-	modelPath := envOrDefault("FGA_MODEL_PATH", "model_basic_demo/authorization-model.fga")
+	modelPath := envOrDefault("FGA_MODEL_PATH", "models/basic/authorization-model-basic.fga")
 
 	ctx := context.Background()
 

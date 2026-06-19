@@ -1,5 +1,5 @@
 name: Document Management Authorization Tests
-model_file: ./authorization-model.fga
+model_file: ./authorization-model-mcp-guide.fga
 
 tuples:
   # Organization membership

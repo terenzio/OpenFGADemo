@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build a self-contained OpenFGA demo at `agent_auth_demo/` showing how AI agents acting on behalf of users get default-deny on destructive file ops via intersection-based authorization, with humans transparently authorized via `user:*`.
+**Goal:** Build a self-contained OpenFGA demo at `models/ai-agent/` showing how AI agents acting on behalf of users get default-deny on destructive file ops via intersection-based authorization, with humans transparently authorized via `user:*`.
 
-**Architecture:** Three files (`authorization-model.fga`, `tests.fga.yaml`, `README.md`). The model defines four types (`user`, `agent`, `folder`, `file`) with capability-gated permissions: `can_edit: editor and edit_authorized`, `can_delete: editor and delete_authorized`. A single `(user:*, edit_authorized, folder:root)` tuple authorizes every human; per-agent grants are bounded to a folder subtree via `or edit_authorized from parent` cascade. Tests are written iteratively — one new check per task, run after each addition to verify the model behaves as specified.
+**Architecture:** Three files (`authorization-model-ai-agent.fga`, `tests.fga.yaml`, `README.md`). The model defines four types (`user`, `agent`, `folder`, `file`) with capability-gated permissions: `can_edit: editor and edit_authorized`, `can_delete: editor and delete_authorized`. A single `(user:*, edit_authorized, folder:root)` tuple authorizes every human; per-agent grants are bounded to a folder subtree via `or edit_authorized from parent` cascade. Tests are written iteratively — one new check per task, run after each addition to verify the model behaves as specified.
 
 **Tech Stack:** OpenFGA DSL (`.fga`), OpenFGA YAML test format (`.fga.yaml`), `fga` CLI (`brew install openfga/tap/fga`).
 
@@ -16,7 +16,7 @@
 
 - The `fga` CLI must be installed. Verify with `fga version`. If missing: `brew install openfga/tap/fga`.
 - All commands in this plan are run from the repo root (`/Users/terence/Documents/GitHub/OpenFGADemo`) unless stated otherwise.
-- The directory `agent_auth_demo/` does not exist yet at plan-start; Task 1 creates it.
+- The directory `models/ai-agent/` does not exist yet at plan-start; Task 1 creates it.
 - TDD note: in OpenFGA, the model file IS the implementation. Tests live in `tests.fga.yaml`. Each task adds one test, runs `fga model test`, and commits only when green. There is no "implementation step" separate from "the model" — the model is written once in Task 1 and validated by every subsequent test.
 - The model in Task 1 is complete and final. Subsequent tasks only add tuples/tests; they do not modify the model.
 
@@ -26,28 +26,28 @@
 
 | Path | Created in | Responsibility |
 |---|---|---|
-| `agent_auth_demo/authorization-model.fga` | Task 1 | The OpenFGA model: 4 types, intersection-based permissions. |
-| `agent_auth_demo/tests.fga.yaml` | Task 2 (created); Tasks 3–6 (extend tests) | Inline tuples + 5 test cases. |
-| `agent_auth_demo/README.md` | Task 7 | What the demo is, the pattern, comparison with `mcp_demo/`, run command. |
+| `models/ai-agent/authorization-model-ai-agent.fga` | Task 1 | The OpenFGA model: 4 types, intersection-based permissions. |
+| `models/ai-agent/tests.fga.yaml` | Task 2 (created); Tasks 3–6 (extend tests) | Inline tuples + 5 test cases. |
+| `models/ai-agent/README.md` | Task 7 | What the demo is, the pattern, comparison with `models/mcp-guide/`, run command. |
 
 ---
 
 ### Task 1: Create the authorization model
 
 **Files:**
-- Create: `agent_auth_demo/authorization-model.fga`
+- Create: `models/ai-agent/authorization-model-ai-agent.fga`
 
 - [ ] **Step 1: Create the demo directory**
 
 Run from repo root:
 ```bash
-mkdir -p agent_auth_demo
+mkdir -p models/ai-agent
 ```
-Expected: command succeeds; `ls agent_auth_demo/` shows an empty directory.
+Expected: command succeeds; `ls models/ai-agent/` shows an empty directory.
 
 - [ ] **Step 2: Write the model file**
 
-Create `agent_auth_demo/authorization-model.fga` with exactly this content:
+Create `models/ai-agent/authorization-model-ai-agent.fga` with exactly this content:
 
 ```fga
 model
@@ -94,15 +94,15 @@ type file
 
 Run from repo root:
 ```bash
-fga model validate --file agent_auth_demo/authorization-model.fga
+fga model validate --file models/ai-agent/authorization-model-ai-agent.fga
 ```
 Expected: exits 0 and prints `{ "is_valid": true }` (or equivalent success output). Any non-zero exit means a syntax error — re-read the model carefully.
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add agent_auth_demo/authorization-model.fga
-git commit -m "feat(agent_auth_demo): add authorization model"
+git add models/ai-agent/authorization-model-ai-agent.fga
+git commit -m "feat(ai-agent): add authorization model"
 ```
 
 ---
@@ -110,15 +110,15 @@ git commit -m "feat(agent_auth_demo): add authorization model"
 ### Task 2: Tests file skeleton + Test 1 (alice has everything)
 
 **Files:**
-- Create: `agent_auth_demo/tests.fga.yaml`
+- Create: `models/ai-agent/tests.fga.yaml`
 
 - [ ] **Step 1: Write the failing test (skeleton + Test 1)**
 
-Create `agent_auth_demo/tests.fga.yaml` with exactly this content:
+Create `models/ai-agent/tests.fga.yaml` with exactly this content:
 
 ```yaml
 name: Agent Authorization Demo Tests
-model_file: ./authorization-model.fga
+model_file: ./authorization-model-ai-agent.fga
 
 tuples:
   # Folder/file hierarchy
@@ -188,15 +188,15 @@ tests:
 
 Run from repo root:
 ```bash
-fga model test --tests agent_auth_demo/tests.fga.yaml
+fga model test --tests models/ai-agent/tests.fga.yaml
 ```
 Expected: exits 0; output reports 1/1 test passed. If the test fails, re-check the tuples for typos against the spec — the model from Task 1 is correct as-is.
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add agent_auth_demo/tests.fga.yaml
-git commit -m "test(agent_auth_demo): add tuples and owner-cascade test"
+git add models/ai-agent/tests.fga.yaml
+git commit -m "test(ai-agent): add tuples and owner-cascade test"
 ```
 
 ---
@@ -204,13 +204,13 @@ git commit -m "test(agent_auth_demo): add tuples and owner-cascade test"
 ### Task 3: Test 2 — agent:scribe can edit but cannot delete file:report
 
 **Files:**
-- Modify: `agent_auth_demo/tests.fga.yaml` (append to `tests:` list)
+- Modify: `models/ai-agent/tests.fga.yaml` (append to `tests:` list)
 
 This test demonstrates the intersection actually denies. `agent:scribe` is `editor` of `folder:projects` (cascades to `file:report`) AND has `edit_authorized` on `folder:projects` (also cascades). But scribe has no `delete_authorized` tuple anywhere — so `can_edit` passes, `can_delete` fails.
 
 - [ ] **Step 1: Append the new test case**
 
-In `agent_auth_demo/tests.fga.yaml`, add the following entry to the end of the `tests:` list (preserve all earlier content; just append):
+In `models/ai-agent/tests.fga.yaml`, add the following entry to the end of the `tests:` list (preserve all earlier content; just append):
 
 ```yaml
   - name: agent:scribe is editor + edit_authorized via projects → can_edit, but no delete_authorized → cannot delete
@@ -227,15 +227,15 @@ In `agent_auth_demo/tests.fga.yaml`, add the following entry to the end of the `
 - [ ] **Step 2: Run the tests**
 
 ```bash
-fga model test --tests agent_auth_demo/tests.fga.yaml
+fga model test --tests models/ai-agent/tests.fga.yaml
 ```
 Expected: exits 0; output reports 2/2 tests passed.
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add agent_auth_demo/tests.fga.yaml
-git commit -m "test(agent_auth_demo): verify intersection denies delete for scribe"
+git add models/ai-agent/tests.fga.yaml
+git commit -m "test(ai-agent): verify intersection denies delete for scribe"
 ```
 
 ---
@@ -243,13 +243,13 @@ git commit -m "test(agent_auth_demo): verify intersection denies delete for scri
 ### Task 4: Test 3 — agent:scribe cannot edit file:secret (scope is real)
 
 **Files:**
-- Modify: `agent_auth_demo/tests.fga.yaml` (append to `tests:` list)
+- Modify: `models/ai-agent/tests.fga.yaml` (append to `tests:` list)
 
 `file:secret` is parented by `folder:root`, not `folder:projects`. `agent:scribe` is `editor` only on `folder:projects` and the `editor from parent` cascade flows down (children inherit from their parent), so being editor on `folder:projects` does not make scribe editor on `folder:root`. Scribe also has no `edit_authorized` tuple on `folder:root`. Both branches of the intersection fail.
 
 - [ ] **Step 1: Append the new test case**
 
-In `agent_auth_demo/tests.fga.yaml`, append to `tests:`:
+In `models/ai-agent/tests.fga.yaml`, append to `tests:`:
 
 ```yaml
   - name: agent:scribe has no editor or edit_authorized on root → cannot edit file:secret
@@ -266,15 +266,15 @@ In `agent_auth_demo/tests.fga.yaml`, append to `tests:`:
 - [ ] **Step 2: Run the tests**
 
 ```bash
-fga model test --tests agent_auth_demo/tests.fga.yaml
+fga model test --tests models/ai-agent/tests.fga.yaml
 ```
 Expected: exits 0; output reports 3/3 tests passed.
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add agent_auth_demo/tests.fga.yaml
-git commit -m "test(agent_auth_demo): verify scribe scope is bounded to projects"
+git add models/ai-agent/tests.fga.yaml
+git commit -m "test(ai-agent): verify scribe scope is bounded to projects"
 ```
 
 ---
@@ -282,7 +282,7 @@ git commit -m "test(agent_auth_demo): verify scribe scope is bounded to projects
 ### Task 5: Test 4 — agent:janitor delete is bounded to projects subtree
 
 **Files:**
-- Modify: `agent_auth_demo/tests.fga.yaml` (append to `tests:` list)
+- Modify: `models/ai-agent/tests.fga.yaml` (append to `tests:` list)
 
 Two checks in one test. `agent:janitor` is `editor folder:root` (so editor on every file) but only has `delete_authorized` on `folder:projects`. So:
 - `file:report` (under `folder:projects`): editor ✓, delete_authorized ✓ → can_delete true
@@ -290,7 +290,7 @@ Two checks in one test. `agent:janitor` is `editor folder:root` (so editor on ev
 
 - [ ] **Step 1: Append the new test case**
 
-In `agent_auth_demo/tests.fga.yaml`, append to `tests:`:
+In `models/ai-agent/tests.fga.yaml`, append to `tests:`:
 
 ```yaml
   - name: agent:janitor delete_authorized is bounded to projects/ subtree
@@ -310,15 +310,15 @@ In `agent_auth_demo/tests.fga.yaml`, append to `tests:`:
 - [ ] **Step 2: Run the tests**
 
 ```bash
-fga model test --tests agent_auth_demo/tests.fga.yaml
+fga model test --tests models/ai-agent/tests.fga.yaml
 ```
 Expected: exits 0; output reports 4/4 tests passed.
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add agent_auth_demo/tests.fga.yaml
-git commit -m "test(agent_auth_demo): verify janitor delete bounded by subtree grant"
+git add models/ai-agent/tests.fga.yaml
+git commit -m "test(ai-agent): verify janitor delete bounded by subtree grant"
 ```
 
 ---
@@ -326,13 +326,13 @@ git commit -m "test(agent_auth_demo): verify janitor delete bounded by subtree g
 ### Task 6: Test 5 — list_objects honors the intersection
 
 **Files:**
-- Modify: `agent_auth_demo/tests.fga.yaml` (append to `tests:` list)
+- Modify: `models/ai-agent/tests.fga.yaml` (append to `tests:` list)
 
 `agent:scribe` is `editor` on every file (cascaded from `folder:projects` → `file:report` is in the projects subtree; but scribe is NOT editor on `file:secret` because secret is under root, not under projects). So scribe's `editor`-set for files is `{file:report}`. Scribe's `edit_authorized` on files is also `{file:report}`. Intersection: `{file:report}`.
 
 - [ ] **Step 1: Append the new test case**
 
-In `agent_auth_demo/tests.fga.yaml`, append to `tests:`:
+In `models/ai-agent/tests.fga.yaml`, append to `tests:`:
 
 ```yaml
   - name: list_objects(agent:scribe, file, can_edit) returns only file:report (intersection enforced during enumeration)
@@ -348,15 +348,15 @@ In `agent_auth_demo/tests.fga.yaml`, append to `tests:`:
 - [ ] **Step 2: Run the tests**
 
 ```bash
-fga model test --tests agent_auth_demo/tests.fga.yaml
+fga model test --tests models/ai-agent/tests.fga.yaml
 ```
 Expected: exits 0; output reports 5/5 tests passed (4 check tests + 1 list_objects test).
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add agent_auth_demo/tests.fga.yaml
-git commit -m "test(agent_auth_demo): verify list_objects honors intersection"
+git add models/ai-agent/tests.fga.yaml
+git commit -m "test(ai-agent): verify list_objects honors intersection"
 ```
 
 ---
@@ -364,11 +364,11 @@ git commit -m "test(agent_auth_demo): verify list_objects honors intersection"
 ### Task 7: README
 
 **Files:**
-- Create: `agent_auth_demo/README.md`
+- Create: `models/ai-agent/README.md`
 
 - [ ] **Step 1: Write the README**
 
-Create `agent_auth_demo/README.md` with exactly this content:
+Create `models/ai-agent/README.md` with exactly this content:
 
 ````markdown
 # Agent Authorization Demo
@@ -379,7 +379,7 @@ capability the user did not grant simply by giving the agent an `editor`
 role. Default-deny on destructive ops; bounded delegation when granted;
 `can_share` reserved for owners and never delegable to agents.
 
-This sits alongside [`../mcp_demo/`](../mcp_demo/), which demonstrates the
+This sits alongside [`../models/mcp-guide/`](../models/mcp-guide/), which demonstrates the
 basic OpenFGA permission-alias pattern (`can_edit: editor`). This demo
 extends that with an intersection-based capability gate.
 
@@ -422,9 +422,9 @@ delegable to agents at all.
 
 ---
 
-## What's different vs `mcp_demo/`
+## What's different vs `models/mcp-guide/`
 
-| Concept                | `mcp_demo/`                | `agent_auth_demo/`                       |
+| Concept                | `models/mcp-guide/`                | `models/ai-agent/`                       |
 |------------------------|----------------------------|------------------------------------------|
 | Principals             | `user`                     | `user` + `agent`                         |
 | `can_edit` definition  | `editor`                   | `editor and edit_authorized`             |
@@ -446,7 +446,7 @@ brew install openfga/tap/fga
 Then from this directory:
 
 ```bash
-cd agent_auth_demo
+cd models/ai-agent
 fga model test --tests tests.fga.yaml
 ```
 
@@ -456,15 +456,15 @@ Expected: 5/5 tests pass, exit code 0.
 - [ ] **Step 2: Verify the run command in the README still works**
 
 ```bash
-cd agent_auth_demo && fga model test --tests tests.fga.yaml && cd ..
+cd models/ai-agent && fga model test --tests tests.fga.yaml && cd ..
 ```
 Expected: exits 0; 5/5 tests pass.
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add agent_auth_demo/README.md
-git commit -m "docs(agent_auth_demo): add README explaining the agent pattern"
+git add models/ai-agent/README.md
+git commit -m "docs(ai-agent): add README explaining the agent pattern"
 ```
 
 ---
@@ -474,8 +474,8 @@ git commit -m "docs(agent_auth_demo): add README explaining the agent pattern"
 After all tasks complete, run from repo root:
 
 ```bash
-fga model validate --file agent_auth_demo/authorization-model.fga && \
-fga model test --tests agent_auth_demo/tests.fga.yaml
+fga model validate --file models/ai-agent/authorization-model-ai-agent.fga && \
+fga model test --tests models/ai-agent/tests.fga.yaml
 ```
 
 Expected: both commands exit 0; test output reports all 5 tests passing.
@@ -483,8 +483,8 @@ Expected: both commands exit 0; test output reports all 5 tests passing.
 The repo should now contain:
 
 ```
-agent_auth_demo/
-├── authorization-model.fga
+models/ai-agent/
+├── authorization-model-ai-agent.fga
 ├── tests.fga.yaml
 └── README.md
 ```

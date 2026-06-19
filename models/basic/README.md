@@ -6,7 +6,7 @@ references, and wildcards — for a document-management system.
 
 This model is **role-only**. Application code calls
 `Check(user, "editor", doc)` directly. Step 2 of the workshop
-([`../model_advanced_demo/folder_document_with_mcp_demo/`](../model_advanced_demo/folder_document_with_mcp_demo/))
+([`../mcp-guide/`](../mcp-guide/))
 shows why you should expose `can_*` permission relations on top of these
 roles instead — and ships a runnable test file you can use against this
 exact role structure.
@@ -15,7 +15,7 @@ exact role structure.
 
 ## The model
 
-[`authorization-model.fga`](authorization-model.fga):
+[`authorization-model-basic.fga`](authorization-model-basic.fga):
 
 ```fga
 model
@@ -170,7 +170,7 @@ Expected `Check` results on `document:roadmap` and `document:public-memo`:
 | user:randomstranger | document:public-memo | editor | false | wildcard not in editor's type list |
 
 These cases match the actual assertions in
-[`../model_advanced_demo/folder_document_with_mcp_demo/tests.fga.yaml`](../model_advanced_demo/folder_document_with_mcp_demo/tests.fga.yaml),
+[`../mcp-guide/tests.fga.yaml`](../mcp-guide/tests.fga.yaml),
 just with role names (`editor`, `viewer`) instead of the `can_*` aliases
 that step 2 adds.
 
@@ -182,12 +182,12 @@ This model is the teaching baseline. Step 2 of the workshop adds
 `can_view` / `can_edit` / `can_delete` / `can_share` permission
 relations on top — and that is the level at which application code
 should be calling `Check`. The test file at
-[`../model_advanced_demo/folder_document_with_mcp_demo/tests.fga.yaml`](../model_advanced_demo/folder_document_with_mcp_demo/tests.fga.yaml)
+[`../mcp-guide/tests.fga.yaml`](../mcp-guide/tests.fga.yaml)
 exercises exactly the same tuples and concepts shown above, against the
 augmented model.
 
 If you want to test the bare model in this folder, copy that test file
-here, point `model_file:` at this folder's `authorization-model.fga`,
+here, point `model_file:` at this folder's `authorization-model-basic.fga`,
 and replace each `can_*` assertion with its underlying role name
 (`can_view` → `viewer`, `can_edit` / `can_delete` → `editor`,
 `can_share` → `owner`).
@@ -196,10 +196,10 @@ and replace each `can_*` assertion with its underlying role name
 
 ## Try it live
 
-With the OpenFGA server running (see [root README](../README.md), step 4):
+With the OpenFGA server running (see [root README](../../README.md), step 4):
 
 ```bash
-fga model write --file authorization-model.fga
+fga model write --file authorization-model-basic.fga
 ```
 
 Then issue Check / Write / ListObjects calls via the
@@ -209,6 +209,6 @@ Then issue Check / Write / ListObjects calls via the
 
 ## Next step
 
-[`../model_advanced_demo/folder_document_with_mcp_demo/`](../model_advanced_demo/folder_document_with_mcp_demo/)
+[`../mcp-guide/`](../mcp-guide/)
 adds `can_*` permission relations and a runnable test file built on top
 of this exact role structure.

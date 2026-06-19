@@ -60,7 +60,7 @@ func main() {
 
 	apiURL := envOrDefault("FGA_API_URL", "http://localhost:8080")
 	serverAddr := envOrDefault("SERVER_ADDR", ":8000")
-	modelPath := envOrDefault("FGA_MODEL_PATH", "model_basic_demo/authorization-model.fga")
+	modelPath := envOrDefault("FGA_MODEL_PATH", "models/basic/authorization-model-basic.fga")
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

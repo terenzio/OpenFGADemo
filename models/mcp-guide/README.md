@@ -2,7 +2,7 @@
 
 A document-management authorization model that adds explicit `can_*`
 permission relations on top of the role definitions from the basic
-model in [`../../model_basic_demo/`](../../model_basic_demo/). Authored
+model in [`../basic/`](../basic/). Authored
 with guidance from the [`openfga-mcp`](https://github.com/openfga) MCP
 server, whose authoring playbook calls out one rule the basic model
 violates:
@@ -18,11 +18,11 @@ the new permissions behave.
 
 ## What's here
 
-| File                                                   | Purpose                                                                                                     |
-| ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
-| [`authorization-model.fga`](authorization-model.fga)   | DSL model. Same types and base relations as the basic model, plus four `can_*` permissions per object type. |
-| [`authorization-model.json`](authorization-model.json) | JSON form of the same model — what the OpenFGA HTTP API accepts. Generated from the `.fga` file.            |
-| [`tests.fga.yaml`](tests.fga.yaml)                     | Inline tuples + `check` and `list_objects` assertions. Run with `fga model test`.                           |
+| File                                                                     | Purpose                                                                                                     |
+| ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| [`authorization-model-mcp-guide.fga`](authorization-model-mcp-guide.fga) | DSL model. Same types and base relations as the basic model, plus four `can_*` permissions per object type. |
+| [`authorization-model.json`](authorization-model.json)                   | JSON form of the same model — what the OpenFGA HTTP API accepts. Generated from the `.fga` file.            |
+| [`tests.fga.yaml`](tests.fga.yaml)                                       | Inline tuples + `check` and `list_objects` assertions. Run with `fga model test`.                           |
 
 ---
 
@@ -226,7 +226,7 @@ Expected output: **5 tests passed, 0 failed**.
 
 ## Further reading
 
-- [`../agent_auth_demo/`](../agent_auth_demo/) — next workshop step: bounded delegation to AI agents using `editor and edit_authorized` intersections.
+- [`../ai-agent/`](../ai-agent/) — next workshop step: bounded delegation to AI agents using `editor and edit_authorized` intersections.
 - [`../../docs/model-explained.md`](../../docs/model-explained.md) — annotated walkthrough of the document-management model.
 - [OpenFGA DSL reference](https://openfga.dev/docs/configuration-language)
 - [`fga model test` documentation](https://openfga.dev/docs/getting-started/cli)

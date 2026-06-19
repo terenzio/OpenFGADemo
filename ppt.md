@@ -144,10 +144,10 @@ The entire API surface is five calls. Point out the split: read-side (Check, Lis
 - Directory tree:
   ```
   OpenFGADemo/
-  ├── model_basic_demo/                     ← Step 1
-  └── model_advanced_demo/
-      ├── folder_document_with_mcp_demo/    ← Step 2
-      └── agent_auth_demo/                  ← Step 3
+  └── models/
+      ├── basic/        ← Step 1
+      ├── mcp-guide/    ← Step 2
+      └── ai-agent/     ← Step 3
   ```
 
 **Speaker notes:**
@@ -161,7 +161,7 @@ Give the audience the map of the workshop. Each step builds on the previous and 
 
 **Content:**
 - Section header: **Step 1 — The Basic Model**
-- File reference: `model_basic_demo/authorization-model.fga`
+- File reference: `models/basic/authorization-model-basic.fga`
 - Code block:
   ```fga
   type folder
@@ -264,7 +264,7 @@ Wildcards model public access. `user:*` means "every user." Crucially, it only w
 
 **Content:**
 - Section header: **Step 2 — Add `can_*` Permissions**
-- File reference: `model_advanced_demo/folder_document_with_mcp_demo/`
+- File reference: `models/mcp-guide/`
 - Problem statement: The basic model exposes role names. App code calls:
   ```go
   Check(user, "editor", doc)   // couples API to today's role names
@@ -303,7 +303,7 @@ Sell the operational payoff. Decoupling means policy changes happen in the model
 **Content:**
 - Command:
   ```bash
-  cd model_advanced_demo/folder_document_with_mcp_demo
+  cd models/mcp-guide
   fga model test --tests tests.fga.yaml
   ```
 - Result: **5 tests passed, 0 failed**
@@ -354,7 +354,7 @@ This is the climax of the workshop and the most timely topic. Handing an agent y
 ## Slide 20 — Step 3: The Intersection Pattern
 
 **Content:**
-- File reference: `model_advanced_demo/agent_auth_demo/authorization-model.fga`
+- File reference: `models/ai-agent/authorization-model-ai-agent.fga`
 - Code block:
   ```fga
   type agent
@@ -573,7 +573,7 @@ Models are versioned by immutability — each write is a new ID, so rollback is 
   # .github/workflows/test.yml
   - name: Validate authorization model
     run: |
-      cd model_advanced_demo/folder_document_with_mcp_demo
+      cd models/mcp-guide
       fga model test --tests tests.fga.yaml
   ```
 - Notes:

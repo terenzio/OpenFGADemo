@@ -1,5 +1,5 @@
 name: Agent Authorization Demo Tests
-model_file: ./authorization-model.fga
+model_file: ./authorization-model-ai-agent.fga
 
 tuples:
   # Folder/file hierarchy

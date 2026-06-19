@@ -8,7 +8,7 @@ when granted; `can_share` reserved for owners and never delegable to
 agents.
 
 This sits alongside
-[`../folder_document_with_mcp_demo/`](../folder_document_with_mcp_demo/),
+[`../mcp-guide/`](../mcp-guide/),
 which demonstrates the basic OpenFGA permission-alias pattern
 (`can_edit: editor`). This demo extends that with an
 intersection-based capability gate.
@@ -17,7 +17,7 @@ intersection-based capability gate.
 
 ## The model
 
-[`authorization-model.fga`](authorization-model.fga) — key relations:
+[`authorization-model-ai-agent.fga`](authorization-model-ai-agent.fga) — key relations:
 
 ```fga
 type agent
@@ -203,9 +203,9 @@ grant. This matters for autonomy: an agent driven by an LLM that asks
 
 ---
 
-## What's different vs `folder_document_with_mcp_demo/`
+## What's different vs `../mcp-guide/`
 
-| Concept                 | `folder_document_with_mcp_demo/` | `agent_auth_demo/`                                               |
+| Concept                 | `../mcp-guide/`                  | `ai-agent/` (this demo)                                          |
 | ----------------------- | -------------------------------- | ---------------------------------------------------------------- |
 | Principals              | `user`                           | `user` + `agent`                                                 |
 | `can_edit` definition   | `editor`                         | `editor and edit_authorized`                                     |

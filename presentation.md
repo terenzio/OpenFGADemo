@@ -107,22 +107,22 @@ in admin / share flows.
 Three progressive models, each adds one concept:
 
 1. **Basic** — DSL fundamentals: roles, cascade, wildcards, groups.
-2. **`can_*` permissions** — separate intent from implementation.
+2. **`can_*` permissions** — separate intent from implementation - guided by the MCP Server. 
 3. **AI-agent delegation** — bounded capabilities via intersection.
 
 ```
 OpenFGADemo/
-├── model_basic_demo/                     ← Step 1
-└── model_advanced_demo/
-    ├── folder_document_with_mcp_demo/    ← Step 2
-    └── agent_auth_demo/                  ← Step 3
+└── models/
+    ├── basic/        ← Step 1
+    ├── mcp-guide/    ← Step 2
+    └── ai-agent/     ← Step 3
 ```
 
 ---
 
 # Step 1 — The Basic Model
 
-[`model_basic_demo/authorization-model.fga`](model_basic_demo/authorization-model.fga)
+[`models/basic/authorization-model-basic.fga`](models/basic/authorization-model-basic.fga)
 
 ```fga
 type folder
@@ -196,7 +196,7 @@ Add or remove acme members → folder access updates automatically.
 
 ---
 
-## Idea 5 — Wildcards (`user:*`)
+## Slide Title — Wildcards (`user:*`)
 
 ```
 user:*  →  viewer  →  document:public-memo
@@ -212,7 +212,7 @@ but `editor` is **not**.
 
 # Step 2 — Add `can_*` Permissions
 
-[`model_advanced_demo/folder_document_with_mcp_demo/`](model_advanced_demo/folder_document_with_mcp_demo/)
+[`models/mcp-guide/`](models/mcp-guide/)
 
 The basic model exposes role names. App code calls:
 
@@ -249,7 +249,7 @@ App code now calls `Check(user, "can_edit", doc)` — **intent**, not role.
 ## TDD for Authorization
 
 ```bash
-cd model_advanced_demo/folder_document_with_mcp_demo
+cd models/mcp-guide
 fga model test --tests tests.fga.yaml
 ```
 
@@ -296,7 +296,7 @@ It can now:
 
 ## Step 3 — The Intersection Pattern
 
-[`model_advanced_demo/agent_auth_demo/authorization-model.fga`](model_advanced_demo/agent_auth_demo/authorization-model.fga)
+[`models/ai-agent/authorization-model-ai-agent.fga`](models/ai-agent/authorization-model-ai-agent.fga)
 
 ```fga
 type agent
@@ -479,7 +479,7 @@ Migration pattern:
 # .github/workflows/test.yml
 - name: Validate authorization model
   run: |
-    cd model_advanced_demo/folder_document_with_mcp_demo
+    cd models/mcp-guide
     fga model test --tests tests.fga.yaml
 ```
 

@@ -53,30 +53,31 @@ the previous.
 
 ```
 OpenFGADemo/
-├── model_basic_demo/                     ← Step 1: the language
-│   └── authorization-model.fga
-└── model_advanced_demo/
-    ├── folder_document_with_mcp_demo/    ← Step 2: can_* permissions
-    │   ├── authorization-model.fga
+└── models/
+    ├── basic/                       ← Step 1: the language
+    │   └── authorization-model-basic.fga
+    ├── mcp-guide/                   ← Step 2: can_* permissions
+    │   ├── authorization-model-mcp-guide.fga
+    │   ├── authorization-model.json
     │   ├── tests.fga.yaml
     │   └── README.md
-    └── agent_auth_demo/                  ← Step 3: AI-agent delegation
-        ├── authorization-model.fga
+    └── ai-agent/                    ← Step 3: AI-agent delegation
+        ├── authorization-model-ai-agent.fga
         ├── tests.fga.yaml
         └── README.md
 ```
 
 | Folder | What it teaches | Time |
 | --- | --- | --- |
-| [model_basic_demo/](model_basic_demo/) | DSL syntax, types, base relations, role implication, parent inheritance, wildcards | ~10 min |
-| [model_advanced_demo/folder_document_with_mcp_demo/](model_advanced_demo/folder_document_with_mcp_demo/) | Why you should expose `can_*` permissions instead of role names | ~15 min |
-| [model_advanced_demo/agent_auth_demo/](model_advanced_demo/agent_auth_demo/) | Bounded delegation to AI agents using intersection (`and`) | ~20 min |
+| [models/basic/](models/basic/) | DSL syntax, types, base relations, role implication, parent inheritance, wildcards | ~10 min |
+| [models/mcp-guide/](models/mcp-guide/) | Why you should expose `can_*` permissions instead of role names | ~15 min |
+| [models/ai-agent/](models/ai-agent/) | Bounded delegation to AI agents using intersection (`and`) | ~20 min |
 
 ---
 
 ## Step 1 — Read the Basic Model
 
-Open [model_basic_demo/authorization-model.fga](model_basic_demo/authorization-model.fga)
+Open [models/basic/authorization-model-basic.fga](models/basic/authorization-model-basic.fga)
 and read it top to bottom.
 
 ```fga
@@ -123,7 +124,7 @@ code ends up calling `Check(user, "editor", doc)`, which couples the API
 surface to today's role structure. The fix is to add `can_*` permission
 relations.
 
-Read [model_advanced_demo/folder_document_with_mcp_demo/](model_advanced_demo/folder_document_with_mcp_demo/)
+Read [models/mcp-guide/](models/mcp-guide/)
 — specifically the four added lines on each type:
 
 ```fga
@@ -140,13 +141,13 @@ model — not every call site.
 **Run the tests:**
 
 ```bash
-cd model_advanced_demo/folder_document_with_mcp_demo
+cd models/mcp-guide
 fga model test --tests tests.fga.yaml
 ```
 
 Expected output: **5 tests passed, 0 failed**.
 
-The test file [tests.fga.yaml](model_advanced_demo/folder_document_with_mcp_demo/tests.fga.yaml)
+The test file [tests.fga.yaml](models/mcp-guide/tests.fga.yaml)
 demonstrates:
 
 1. Owner of a top folder gets `can_view/edit/delete` cascaded to a grand-child doc — but **not** `can_share` (sharing requires direct ownership).
@@ -159,10 +160,10 @@ demonstrates:
 the `editor` role on `folder:product`, then add an assertion that he
 `can_edit` `document:roadmap`. Re-run the tests.
 
-The `mcp_demo` folder name comes from the fact that this model was authored
+The `mcp-guide` folder name comes from the fact that this model was authored
 with help from the [`openfga-mcp`](https://github.com/openfga) MCP server,
 which surfaces the official "Always define permissions in the authorization
-models" guidance. See [its README](model_advanced_demo/folder_document_with_mcp_demo/README.md)
+models" guidance. See [its README](models/mcp-guide/README.md)
 for the full story.
 
 ---
@@ -170,7 +171,7 @@ for the full story.
 ## Step 3 — Bounded Delegation to AI Agents
 
 The most advanced model is in
-[model_advanced_demo/agent_auth_demo/](model_advanced_demo/agent_auth_demo/).
+[models/ai-agent/](models/ai-agent/).
 It answers a question that comes up the moment you give an AI agent
 credentials: **how do I let an agent edit my files without letting it edit
 all of them?**
@@ -209,7 +210,7 @@ type folder
 **Run the tests:**
 
 ```bash
-cd model_advanced_demo/agent_auth_demo
+cd models/ai-agent
 fga model test --tests tests.fga.yaml
 ```
 
@@ -307,6 +308,153 @@ Stops all containers and removes volumes.
 
 ---
 
+## OpenFGA MCP Demo
+
+Step 2's model folder is named `mcp-guide` because it was
+authored with help from the [`openfga-mcp`](https://github.com/openfga) server.
+This section explains what that server actually is and walks through using it to
+improve the [basic model](models/basic/authorization-model-basic.fga).
+
+### What the server is (and isn't)
+
+`openfga-mcp` is a [Model Context Protocol](https://modelcontextprotocol.io)
+server that gives an AI assistant the *official OpenFGA modeling playbook* on
+demand. It is a **context/prompt provider**, not a live connection to a running
+OpenFGA store:
+
+- It **does** inject best-practice authoring guidance — the same advice the
+  OpenFGA team publishes about DSL syntax, relationship patterns, `can_*`
+  permissions, `.fga.yaml` testing, and custom roles — directly into the
+  assistant's context.
+- It **does not** read your tuples, run `Check`, or talk to the server you boot
+  with `make up`. For that you still use the `fga` CLI or the Go SDK (Step 4).
+
+Think of it as a retrieval layer that primes the assistant with the right
+guidance *before* it helps you write or review a model.
+
+### The two tools
+
+The server exposes exactly two tools:
+
+| Tool | What it does |
+| --- | --- |
+| `list_available_contexts` | Lists every context prompt the server can supply, with the keyword patterns that trigger each one. |
+| `get_context_for_query` | Takes a natural-language query and returns the most relevant context prompt in full. |
+
+Calling `list_available_contexts` against this server returns a single context:
+
+```
+Available Context Prompts:
+
+**Author authorization models with OpenFGA**
+File: authorization-model.md
+Patterns: authorization model, auth model, rbac, abac, permission, role based,
+          tuple, zanzibar, rebac, fine grained access control, fga,
+          permission check, can user, access check, ...
+```
+
+So any query about access models, permissions, tuples, or `can_*` checks will
+match and pull back the full authoring guide.
+
+### Wiring it up
+
+MCP servers are registered in your client's MCP config. For Claude Code, add it
+to `.mcp.json` (or your user-level `settings.json`):
+
+```json
+{
+  "mcpServers": {
+    "openfga-mcp": {
+      "command": "npx",
+      "args": ["-y", "@openfga/mcp"]
+    }
+  }
+}
+```
+
+> Check the [`openfga-mcp` project](https://github.com/openfga) for the exact
+> package/command — the point of this demo is the *behavior* (two tools, context
+> on demand), which is what the examples below show.
+
+### Worked example — upgrading the basic model
+
+The [basic model](models/basic/authorization-model-basic.fga) exposes role names
+(`editor`, `viewer`) but **no permission relations**. That's exactly the gap the
+MCP guidance tells you to close. Here is the round trip.
+
+**1. Ask the server for guidance.** A call to `get_context_for_query` with a
+query like *"How do I expose permissions instead of role names in OpenFGA?"*
+matches the `permission` / `can user` patterns and returns the authoring guide,
+which states:
+
+> It's a common practice to define specific permissions, that can't be directly
+> assigned, using `can_<permission>` relations … **Always define permissions in
+> the authorization models.**
+
+**2. Apply it to the basic model.** The basic `document` type looks like this:
+
+```fga
+type document
+  relations
+    define parent: [folder]
+    define owner: [user]
+    define editor: [user, organization#member] or owner or editor from parent
+    define viewer: [user, user:*, organization#member] or editor or viewer from parent
+```
+
+Following the guidance, you add a `can_*` surface so application code asks about
+*intent* (`can_edit`) instead of *roles* (`editor`):
+
+```fga
+type document
+  relations
+    define parent: [folder]
+    define owner: [user]
+    define editor: [user, organization#member] or owner or editor from parent
+    define viewer: [user, user:*, organization#member] or editor or viewer from parent
+
+    define can_view:   viewer
+    define can_edit:   editor
+    define can_delete: editor
+    define can_share:  owner
+```
+
+That is precisely the four-line change you see materialized in
+[Step 2's model](models/mcp-guide/authorization-model-mcp-guide.fga).
+
+**3. Ask the server how to test it.** A follow-up query like *"How do I write
+tests for an OpenFGA model?"* matches the same context and returns the
+`.fga.yaml` recipe — inline `model`, `tuples`, and `tests` with `check`,
+`list_objects`, and `list_users` assertions — which is the shape of
+[Step 2's `tests.fga.yaml`](models/mcp-guide/tests.fga.yaml):
+
+```yaml
+model_file: ./authorization-model-mcp-guide.fga
+tuples:
+  - user: user:alice
+    relation: owner
+    object: folder:top
+tests:
+  - name: owner cascade
+    check:
+      - user: user:alice
+        object: document:roadmap
+        assertions:
+          can_edit: true
+          can_share: false   # sharing requires direct ownership
+```
+
+```bash
+fga model test --tests tests.fga.yaml
+```
+
+**The takeaway:** the MCP server didn't change your model — it handed the
+assistant the official guidance, and the assistant applied it. Every decision is
+still verifiable with the `fga` CLI, so you get authoritative best practices
+*and* reproducible tests.
+
+---
+
 ## Project Structure
 
 ```
@@ -322,10 +470,10 @@ OpenFGADemo/
 │   ├── fga/          # OpenFGA Go SDK wrapper (Check, Write, ListObjects, Expand)
 │   ├── httpapi/      # Chi HTTP handlers
 │   └── store/        # Thread-safe in-memory document/folder/org store
-├── model_basic_demo/                          # Step 1
-├── model_advanced_demo/
-│   ├── folder_document_with_mcp_demo/         # Step 2
-│   └── agent_auth_demo/                       # Step 3
+├── models/
+│   ├── basic/                                 # Step 1
+│   ├── mcp-guide/                             # Step 2
+│   └── ai-agent/                              # Step 3
 ├── scripts/
 │   └── demo.sh       # Automated curl walkthrough of the HTTP API
 ├── docker-compose.yml            # MariaDB + OpenFGA + Playground

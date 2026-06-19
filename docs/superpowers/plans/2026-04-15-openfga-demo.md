@@ -20,7 +20,7 @@ OpenFGADemo/
 ├── Makefile
 ├── go.mod
 ├── model/
-│   └── authorization-model.fga
+│   └── authorization-model-basic.fga
 ├── cmd/
 │   ├── cli/main.go
 │   └── server/main.go
@@ -55,7 +55,7 @@ OpenFGADemo/
 - Create: `docker-compose.yml`
 - Create: `Makefile`
 - Create: `go.mod`
-- Create: `model/authorization-model.fga`
+- Create: `models/basic/authorization-model-basic.fga`
 
 - [ ] **Step 1: Create `docker-compose.yml`**
 
@@ -106,7 +106,7 @@ services:
       retries: 10
 ```
 
-- [ ] **Step 2: Create `model/authorization-model.fga`**
+- [ ] **Step 2: Create `models/basic/authorization-model-basic.fga`**
 
 ```
 model
@@ -1553,7 +1553,7 @@ func main() {
 
 	apiURL := envOrDefault("FGA_API_URL", "http://localhost:8080")
 	addr := envOrDefault("SERVER_ADDR", ":8000")
-	modelPath := envOrDefault("FGA_MODEL_PATH", "model/authorization-model.fga")
+	modelPath := envOrDefault("FGA_MODEL_PATH", "models/basic/authorization-model-basic.fga")
 
 	ctx := context.Background()
 
@@ -1730,7 +1730,7 @@ func main() {
 	}
 
 	apiURL := envOrDefault("FGA_API_URL", "http://localhost:8080")
-	modelPath := envOrDefault("FGA_MODEL_PATH", "model/authorization-model.fga")
+	modelPath := envOrDefault("FGA_MODEL_PATH", "models/basic/authorization-model-basic.fga")
 
 	ctx := context.Background()
 
@@ -2167,7 +2167,7 @@ chmod +x scripts/demo.sh
 ```markdown
 # Authorization Model — Explained
 
-This document walks through the OpenFGA authorization model in `model/authorization-model.fga`.
+This document walks through the OpenFGA authorization model in `models/basic/authorization-model-basic.fga`.
 
 ## Schema
 
@@ -2363,7 +2363,7 @@ make down
 
 ```
 ├── docker-compose.yml           # MariaDB + OpenFGA + Playground
-├── model/authorization-model.fga # The authorization model (single source of truth)
+├── models/basic/authorization-model-basic.fga # The authorization model (single source of truth)
 ├── cmd/cli/                     # CLI teaching walkthrough (8 chapters)
 ├── cmd/server/                  # REST API with FGA authorization
 ├── internal/fga/                # OpenFGA client wrapper
