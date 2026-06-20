@@ -34,3 +34,7 @@ go.work.sum
 # Editor/IDE
 # .idea/
 # .vscode/
+
+# Claude Code — per-developer local settings (machine-specific, may contain
+# absolute paths). Shared team config in .claude/settings.json is NOT ignored.
+**/.claude/settings.local.json

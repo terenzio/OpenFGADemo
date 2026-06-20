@@ -298,7 +298,35 @@ Or run the full automated walkthrough:
 make demo
 ```
 
-### 4d. Tear down
+### 4d. Browser walkthrough (no Postman)
+
+The [`web/`](web/) directory holds a zero-install browser version of the same
+8-chapter raw-API walkthrough that the Postman collection
+([postman/](postman/)) and `make cli` drive. It calls the OpenFGA REST API on
+`:8080` directly from the browser (OpenFGA returns `Access-Control-Allow-Origin: *`,
+so no proxy is needed).
+
+```bash
+make up    # OpenFGA on :8080 (if not already running)
+make web   # serves web/ on http://localhost:8090
+```
+
+Then open:
+
+- <http://localhost:8090/> — **narrated walkthrough.** One card per chapter with a
+  per-step **Run** button and a **Run all chapters** button. Chapter 1 captures
+  `store_id` / `model_id` automatically (like the Postman test scripts); every
+  Check shows expected-vs-actual ALLOWED/DENIED with a ✓/✗ badge.
+- <http://localhost:8090/swagger.html> — **Swagger UI**, a raw-API reference
+  rendered from [web/openfga-openapi.json](web/openfga-openapi.json). Use it to
+  poke individual endpoints; it does not enforce order or auto-capture IDs.
+
+Because `/write` is non-idempotent, re-running the demo on the same store fails
+with HTTP 400 on already-written tuples — click **Create Store** again for a
+fresh store, or use the Appendix → **Reset Chapter 6** step, exactly as in the
+Postman collection.
+
+### 4e. Tear down
 
 ```bash
 make down

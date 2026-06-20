@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>OpenFGA Demo — Raw API Reference (Swagger UI)</title>
+<link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css" />
+<style>
+  body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .banner {
+    background: #171a23; color: #e6e9ef; padding: 14px 20px;
+    border-bottom: 1px solid #2a3040; font-size: 13px;
+  }
+  .banner strong { color: #6ea8fe; }
+  .banner a { color: #6ea8fe; }
+</style>
+</head>
+<body>
+<div class="banner">
+  <strong>Raw API reference.</strong>
+  This is the generic OpenFGA API explorer — it does <strong>not</strong> enforce step order or auto-capture
+  <code>store_id</code> / <code>model_id</code>. For the guided 8-chapter story, use the
+  <a href="./index.html">narrated walkthrough</a>. "Try it out" calls your live server at
+  <code>http://localhost:8080</code> (start it with <code>make up</code>).
+</div>
+<div id="swagger-ui"></div>
+<script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js" crossorigin></script>
+<script>
+  window.onload = function () {
+    window.ui = SwaggerUIBundle({
+      url: "./openfga-openapi.json",
+      dom_id: "#swagger-ui",
+      deepLinking: true,
+      tryItOutEnabled: true,
+      presets: [SwaggerUIBundle.presets.apis]
+    });
+  };
+</script>
+</body>
+</html>

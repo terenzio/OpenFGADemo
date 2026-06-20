@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>OpenFGA ReBAC Demo — Browser Walkthrough</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --panel: #171a23;
+    --panel-2: #1f2430;
+    --border: #2a3040;
+    --text: #e6e9ef;
+    --muted: #9aa3b2;
+    --accent: #6ea8fe;
+    --ok: #36c275;
+    --bad: #ff6b6b;
+    --warn: #ffb454;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.5;
+  }
+  header.top {
+    padding: 20px 24px; border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, #141824, #0f1117);
+    position: sticky; top: 0; z-index: 10;
+  }
+  header.top h1 { margin: 0 0 4px; font-size: 20px; }
+  header.top p { margin: 0; color: var(--muted); font-size: 13px; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 24px; }
+  .config {
+    display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center;
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px 16px; margin-bottom: 16px;
+  }
+  .config label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 3px; }
+  .config input {
+    background: var(--panel-2); border: 1px solid var(--border); color: var(--text);
+    border-radius: 6px; padding: 6px 8px; font-family: var(--mono); font-size: 12px; min-width: 220px;
+  }
+  .pill {
+    font-family: var(--mono); font-size: 12px; background: var(--panel-2);
+    border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px;
+    color: var(--accent); user-select: all;
+  }
+  .pill.empty { color: var(--muted); }
+  .toolbar { display: flex; gap: 10px; flex-wrap: wrap; margin-left: auto; }
+  button {
+    background: var(--accent); color: #0a0f1a; border: none; border-radius: 6px;
+    padding: 7px 13px; font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  button:hover { filter: brightness(1.08); }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  button.ghost { background: var(--panel-2); color: var(--text); border: 1px solid var(--border); }
+  button.run { padding: 5px 12px; }
+  .chapter { border: 1px solid var(--border); border-radius: 10px; margin-bottom: 14px; overflow: hidden; background: var(--panel); }
+  .chapter > summary {
+    list-style: none; cursor: pointer; padding: 14px 16px;
+    display: flex; align-items: baseline; gap: 10px; user-select: none;
+  }
+  .chapter > summary::-webkit-details-marker { display: none; }
+  .chapter > summary .ch-num { color: var(--accent); font-weight: 700; font-size: 13px; }
+  .chapter > summary h2 { margin: 0; font-size: 16px; }
+  .chapter > summary .ch-desc { color: var(--muted); font-size: 13px; flex: 1 1 100%; margin-top: 4px; }
+  .steps { padding: 0 16px 14px; }
+  .step {
+    border: 1px solid var(--border); border-radius: 8px; padding: 12px;
+    margin-top: 12px; background: var(--panel-2);
+  }
+  .step-head { display: flex; align-items: center; gap: 10px; }
+  .step-head .title { font-weight: 600; font-size: 14px; flex: 1; }
+  .method {
+    font-family: var(--mono); font-size: 11px; font-weight: 700; padding: 2px 6px;
+    border-radius: 4px; background: #243; color: #8ff0b0; white-space: nowrap;
+  }
+  .method.GET { background: #234; color: #8fc8f0; }
+  .method.DELETE { background: #422; color: #f0a0a0; }
+  .path { font-family: var(--mono); font-size: 12px; color: var(--muted); word-break: break-all; }
+  .narration { font-size: 13px; color: var(--muted); margin: 8px 0 0; }
+  .narration .because { color: var(--text); }
+  pre {
+    margin: 8px 0 0; background: #0c0e14; border: 1px solid var(--border);
+    border-radius: 6px; padding: 10px; font-family: var(--mono); font-size: 12px;
+    overflow-x: auto; white-space: pre-wrap; word-break: break-word;
+  }
+  .result { margin-top: 8px; display: none; }
+  .result.show { display: block; }
+  .badge {
+    display: inline-block; font-size: 12px; font-weight: 700; padding: 2px 9px;
+    border-radius: 999px; margin-right: 8px;
+  }
+  .badge.ok { background: rgba(54,194,117,.15); color: var(--ok); border: 1px solid var(--ok); }
+  .badge.bad { background: rgba(255,107,107,.15); color: var(--bad); border: 1px solid var(--bad); }
+  .badge.warn { background: rgba(255,180,84,.15); color: var(--warn); border: 1px solid var(--warn); }
+  .expected { font-size: 12px; color: var(--muted); }
+  .hint { font-size: 12px; color: var(--warn); margin-top: 6px; }
+  a { color: var(--accent); }
+  .nav { font-size: 13px; margin-bottom: 16px; }
+  .nav a { margin-right: 14px; }
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>OpenFGA ReBAC Demo — Browser Walkthrough</h1>
+  <p>The same 8-chapter raw-API walkthrough as the Postman collection and <code>make cli</code>, run straight from your browser. No install. Calls the OpenFGA REST API directly.</p>
+</header>
+
+<div class="wrap">
+  <div class="nav">
+    <a href="./swagger.html">→ Raw API reference (Swagger UI)</a>
+    <span style="color:var(--muted)">Run Chapter 1 first — it captures store_id / model_id for every later call.</span>
+  </div>
+
+  <div class="config">
+    <div>
+      <label>Base URL (OpenFGA REST API)</label>
+      <input id="baseUrl" value="http://localhost:8080" />
+    </div>
+    <div>
+      <label>store_id</label>
+      <div id="storeIdPill" class="pill empty">(not created yet)</div>
+    </div>
+    <div>
+      <label>model_id</label>
+      <div id="modelIdPill" class="pill empty">(not written yet)</div>
+    </div>
+    <div class="toolbar">
+      <button id="runAll">▶ Run all chapters</button>
+      <button id="resetState" class="ghost">Clear IDs</button>
+    </div>
+  </div>
+
+  <div id="chapters"></div>
+</div>
+
+<script>
+"use strict";
+
+// ---------------------------------------------------------------------------
+// State (mirrors Postman's collection variables; auto-captured between calls)
+// ---------------------------------------------------------------------------
+const state = { storeId: "", modelId: "" };
+
+function baseUrl() { return document.getElementById("baseUrl").value.replace(/\/+$/, ""); }
+function setStore(id) { state.storeId = id; renderPills(); }
+function setModel(id) { state.modelId = id; renderPills(); }
+function renderPills() {
+  const s = document.getElementById("storeIdPill");
+  const m = document.getElementById("modelIdPill");
+  s.textContent = state.storeId || "(not created yet)";
+  s.classList.toggle("empty", !state.storeId);
+  m.textContent = state.modelId || "(not written yet)";
+  m.classList.toggle("empty", !state.modelId);
+}
+
+// The authorization model, identical to the JSON embedded in the Postman
+// collection — the JSON form of models/basic/authorization-model-basic.fga.
+const MODEL = {
+  schema_version: "1.1",
+  type_definitions: [
+    { type: "user" },
+    {
+      type: "organization",
+      relations: { member: { this: {} } },
+      metadata: { relations: { member: { directly_related_user_types: [{ type: "user" }] } } }
+    },
+    {
+      type: "folder",
+      relations: {
+        owner: { this: {} },
+        parent: { this: {} },
+        editor: { union: { child: [ { this: {} }, { computedUserset: { relation: "owner" } }, { tupleToUserset: { tupleset: { relation: "parent" }, computedUserset: { relation: "editor" } } } ] } },
+        viewer: { union: { child: [ { this: {} }, { computedUserset: { relation: "editor" } }, { tupleToUserset: { tupleset: { relation: "parent" }, computedUserset: { relation: "viewer" } } } ] } }
+      },
+      metadata: { relations: {
+        owner: { directly_related_user_types: [{ type: "user" }] },
+        parent: { directly_related_user_types: [{ type: "folder" }] },
+        editor: { directly_related_user_types: [{ type: "user" }, { type: "organization", relation: "member" }] },
+        viewer: { directly_related_user_types: [{ type: "user" }, { type: "user", wildcard: {} }, { type: "organization", relation: "member" }] }
+      } }
+    },
+    {
+      type: "document",
+      relations: {
+        parent: { this: {} },
+        owner: { this: {} },
+        editor: { union: { child: [ { this: {} }, { computedUserset: { relation: "owner" } }, { tupleToUserset: { tupleset: { relation: "parent" }, computedUserset: { relation: "editor" } } } ] } },
+        viewer: { union: { child: [ { this: {} }, { computedUserset: { relation: "editor" } }, { tupleToUserset: { tupleset: { relation: "parent" }, computedUserset: { relation: "viewer" } } } ] } }
+      },
+      metadata: { relations: {
+        parent: { directly_related_user_types: [{ type: "folder" }] },
+        owner: { directly_related_user_types: [{ type: "user" }] },
+        editor: { directly_related_user_types: [{ type: "user" }, { type: "organization", relation: "member" }] },
+        viewer: { directly_related_user_types: [{ type: "user" }, { type: "user", wildcard: {} }, { type: "organization", relation: "member" }] }
+      } }
+    }
+  ]
+};
+
+// ---------------------------------------------------------------------------
+// HTTP layer
+// ---------------------------------------------------------------------------
+async function api(method, path, body) {
+  const res = await fetch(baseUrl() + path, {
+    method,
+    headers: body ? { "Content-Type": "application/json" } : {},
+    body: body ? JSON.stringify(body) : undefined
+  });
+  const text = await res.text();
+  let json;
+  try { json = text ? JSON.parse(text) : {}; } catch (_) { json = { raw: text }; }
+  return { ok: res.ok, status: res.status, json };
+}
+
+function tk(user, relation, object) { return { user, relation, object }; }
+
+function requireBootstrap() {
+  if (!state.storeId) throw new Error("No store yet — run Chapter 1 → Create Store first.");
+  if (!state.modelId) throw new Error("No model yet — run Chapter 1 → Write Authorization Model first.");
+}
+
+// ---------------------------------------------------------------------------
+// Step actions. Each returns { request, response, verdict } for rendering.
+// verdict: { kind: 'ok'|'bad'|'warn'|'info', label, detail }
+// ---------------------------------------------------------------------------
+const actions = {
+  async createStore() {
+    const req = { method: "POST", path: "/stores", body: { name: "openfga-demo-web" } };
+    const r = await api(req.method, req.path, req.body);
+    if (r.ok && r.json.id) {
+      setStore(r.json.id);
+      setModel(""); // new store invalidates any prior model id
+      return { req, r, verdict: { kind: "ok", label: "STORE CREATED", detail: "store_id captured: " + r.json.id } };
+    }
+    return { req, r, verdict: { kind: "bad", label: "FAILED", detail: "HTTP " + r.status } };
+  },
+
+  async writeModel() {
+    if (!state.storeId) throw new Error("No store yet — run Create Store first.");
+    const req = { method: "POST", path: `/stores/${state.storeId}/authorization-models`, body: MODEL };
+    const r = await api(req.method, req.path, req.body);
+    if (r.ok && r.json.authorization_model_id) {
+      setModel(r.json.authorization_model_id);
+      return { req, r, verdict: { kind: "ok", label: "MODEL WRITTEN", detail: "model_id captured: " + r.json.authorization_model_id } };
+    }
+    return { req, r, verdict: { kind: "bad", label: "FAILED", detail: "HTTP " + r.status } };
+  },
+
+  async listStores() {
+    const req = { method: "GET", path: "/stores" };
+    const r = await api(req.method, req.path);
+    return { req, r, verdict: { kind: r.ok ? "info" : "bad", label: r.ok ? "OK" : "FAILED", detail: "HTTP " + r.status } };
+  },
+
+  async getStore() {
+    if (!state.storeId) throw new Error("No store yet — run Create Store first.");
+    const req = { method: "GET", path: `/stores/${state.storeId}` };
+    const r = await api(req.method, req.path);
+    return { req, r, verdict: { kind: r.ok ? "info" : "bad", label: r.ok ? "OK" : "FAILED", detail: "HTTP " + r.status } };
+  },
+
+  async readModels() {
+    if (!state.storeId) throw new Error("No store yet — run Create Store first.");
+    const req = { method: "GET", path: `/stores/${state.storeId}/authorization-models` };
+    const r = await api(req.method, req.path);
+    return { req, r, verdict: { kind: r.ok ? "info" : "bad", label: r.ok ? "OK" : "FAILED", detail: "HTTP " + r.status } };
+  },
+
+  writeTuples(tuples) {
+    return async () => {
+      requireBootstrap();
+      const req = { method: "POST", path: `/stores/${state.storeId}/write`, body: { writes: { tuple_keys: tuples }, authorization_model_id: state.modelId } };
+      const r = await api(req.method, req.path, req.body);
+      if (r.ok) return { req, r, verdict: { kind: "ok", label: "WRITTEN", detail: tuples.length + " tuple(s) written" } };
+      const dup = JSON.stringify(r.json).includes("already exists");
+      return { req, r, verdict: { kind: "warn", label: "HTTP " + r.status, detail: dup ? "Tuple already exists — /write is non-idempotent. Re-run Create Store (Ch.1) for a fresh store, or use the Appendix reset." : "Write failed." } };
+    };
+  },
+
+  deleteTuples(tuples) {
+    return async () => {
+      requireBootstrap();
+      const req = { method: "POST", path: `/stores/${state.storeId}/write`, body: { deletes: { tuple_keys: tuples }, authorization_model_id: state.modelId } };
+      const r = await api(req.method, req.path, req.body);
+      if (r.ok) return { req, r, verdict: { kind: "ok", label: "DELETED", detail: tuples.length + " tuple(s) deleted" } };
+      return { req, r, verdict: { kind: "warn", label: "HTTP " + r.status, detail: "Delete failed (tuple may not exist)." } };
+    };
+  },
+
+  check(user, relation, object, expected) {
+    return async () => {
+      requireBootstrap();
+      const req = { method: "POST", path: `/stores/${state.storeId}/check`, body: { tuple_key: tk(user, relation, object), authorization_model_id: state.modelId } };
+      const r = await api(req.method, req.path, req.body);
+      if (!r.ok) return { req, r, verdict: { kind: "bad", label: "ERROR", detail: "HTTP " + r.status } };
+      const allowed = !!r.json.allowed;
+      const got = allowed ? "ALLOWED" : "DENIED";
+      const exp = expected ? "ALLOWED" : "DENIED";
+      const pass = allowed === expected;
+      return { req, r, verdict: {
+        kind: pass ? "ok" : "bad",
+        label: (pass ? "✓ " : "✗ ") + got,
+        detail: pass ? `matches expected ${exp}` : `MISMATCH — expected ${exp}, got ${got}`
+      } };
+    };
+  },
+
+  listObjects(user, relation, type) {
+    return async () => {
+      requireBootstrap();
+      const req = { method: "POST", path: `/stores/${state.storeId}/list-objects`, body: { type, relation, user, authorization_model_id: state.modelId } };
+      const r = await api(req.method, req.path, req.body);
+      if (!r.ok) return { req, r, verdict: { kind: "bad", label: "ERROR", detail: "HTTP " + r.status } };
+      const objs = r.json.objects || [];
+      return { req, r, verdict: { kind: "info", label: objs.length + " object(s)", detail: objs.length ? objs.join(", ") : "(none)" } };
+    };
+  },
+
+  expand(relation, object) {
+    return async () => {
+      requireBootstrap();
+      const req = { method: "POST", path: `/stores/${state.storeId}/expand`, body: { tuple_key: { relation, object }, authorization_model_id: state.modelId } };
+      const r = await api(req.method, req.path, req.body);
+      return { req, r, verdict: { kind: r.ok ? "info" : "bad", label: r.ok ? "RESOLUTION TREE" : "ERROR", detail: "HTTP " + r.status } };
+    };
+  },
+
+  readTuples(object) {
+    return async () => {
+      if (!state.storeId) throw new Error("No store yet — run Create Store first.");
+      const req = { method: "POST", path: `/stores/${state.storeId}/read`, body: { tuple_key: { object } } };
+      const r = await api(req.method, req.path, req.body);
+      const n = (r.json.tuples || []).length;
+      return { req, r, verdict: { kind: r.ok ? "info" : "bad", label: r.ok ? n + " tuple(s)" : "ERROR", detail: "HTTP " + r.status } };
+    };
+  },
+
+  // Idempotent Chapter 6 reset: delete each tuple in its own /write, ignore
+  // 400s for tuples that were never committed (mirrors the Postman appendix).
+  resetCh6() {
+    return async () => {
+      requireBootstrap();
+      const tuples = [ tk("user:alice", "owner", "document:public-memo"), tk("user:*", "viewer", "document:public-memo") ];
+      const notes = [];
+      for (const t of tuples) {
+        const r = await api("POST", `/stores/${state.storeId}/write`, { deletes: { tuple_keys: [t] }, authorization_model_id: state.modelId });
+        notes.push(`${t.user}: ${r.ok ? "deleted" : "already absent (HTTP " + r.status + ")"}`);
+      }
+      const req = { method: "POST", path: `/stores/${state.storeId}/read`, body: { tuple_key: { object: "document:public-memo" } } };
+      const r = await api(req.method, req.path, req.body);
+      const n = (r.json.tuples || []).length;
+      return { req, r, verdict: { kind: "ok", label: "RESET DONE", detail: notes.join("  ·  ") + `  ·  remaining: ${n}` } };
+    };
+  },
+
+  deleteStore() {
+    return async () => {
+      if (!state.storeId) throw new Error("No store to delete.");
+      const req = { method: "DELETE", path: `/stores/${state.storeId}` };
+      const r = await api(req.method, req.path);
+      if (r.ok) { const old = state.storeId; setStore(""); setModel(""); return { req, r, verdict: { kind: "ok", label: "STORE DELETED", detail: old } }; }
+      return { req, r, verdict: { kind: "bad", label: "FAILED", detail: "HTTP " + r.status } };
+    };
+  }
+};
+
+// ---------------------------------------------------------------------------
+// Walkthrough definition — mirrors the Postman collection item tree.
+// ---------------------------------------------------------------------------
+const CHAPTERS = [
+  {
+    title: "Chapter 1 — Bootstrap",
+    desc: "Create a new OpenFGA store and write the authorization model. Run Create Store then Write Authorization Model first — both auto-capture IDs.",
+    steps: [
+      { title: "Create Store", method: "POST", path: "/stores", run: () => actions.createStore(),
+        narration: "SDK: CreateStore. Creates a new store; its id is captured into store_id for every later call." },
+      { title: "Write Authorization Model", method: "POST", path: "/stores/{store_id}/authorization-models", run: () => actions.writeModel(),
+        narration: "SDK: WriteAuthorizationModel. owner ⇒ editor ⇒ viewer; editor/viewer inherit through folders; organization#member grants group access; user:* is a public-viewer wildcard. Captures model_id." },
+      { title: "List Stores", method: "GET", path: "/stores", run: () => actions.listStores(), narration: "Supporting read: list all stores on the server." },
+      { title: "Get Store", method: "GET", path: "/stores/{store_id}", run: () => actions.getStore(), narration: "Supporting read: fetch metadata for the current store." },
+      { title: "Read Authorization Models", method: "GET", path: "/stores/{store_id}/authorization-models", run: () => actions.readModels(), narration: "Supporting read: list all models written to this store (newest first)." }
+    ]
+  },
+  {
+    title: "Chapter 2 — Direct Permissions",
+    desc: "Users can be directly assigned roles. owner implies editor, editor implies viewer.",
+    steps: [
+      { title: "Write Tuple — alice owner document:roadmap", method: "POST", path: "/stores/{store_id}/write",
+        run: actions.writeTuples([ tk("user:alice", "owner", "document:roadmap") ]),
+        narration: "Makes alice the owner of document:roadmap." },
+      { title: "Check — alice viewer document:roadmap", method: "POST", path: "/stores/{store_id}/check",
+        run: actions.check("user:alice", "viewer", "document:roadmap", true), expected: true,
+        narration: "alice is owner, owner ⇒ editor ⇒ viewer." },
+      { title: "Check — bob viewer document:roadmap", method: "POST", path: "/stores/{store_id}/check",
+        run: actions.check("user:bob", "viewer", "document:roadmap", false), expected: false,
+        narration: "bob has no relationship to document:roadmap." }
+    ]
+  },
+  {
+    title: "Chapter 3 — Folder Inheritance",
+    desc: "Documents inherit permissions from their parent folder ('editor from parent').",
+    steps: [
+      { title: "Write Tuples — parent + charlie editor folder:product", method: "POST", path: "/stores/{store_id}/write",
+        run: actions.writeTuples([ tk("folder:product", "parent", "document:roadmap"), tk("user:charlie", "editor", "folder:product") ]),
+        narration: "Places document:roadmap under folder:product and makes charlie editor of the folder." },
+      { title: "Check — charlie editor document:roadmap", method: "POST", path: "/stores/{store_id}/check",
+        run: actions.check("user:charlie", "editor", "document:roadmap", true), expected: true,
+        narration: "charlie is editor on folder:product, roadmap's parent; 'editor from parent' grants it." },
+      { title: "Check — charlie viewer document:roadmap", method: "POST", path: "/stores/{store_id}/check",
+        run: actions.check("user:charlie", "viewer", "document:roadmap", true), expected: true,
+        narration: "editor implies viewer." }
+    ]
+  },
+  {
+    title: "Chapter 4 — Nested Folders",
+    desc: "Permissions flow through nested folder hierarchies (company → product → document).",
+    steps: [
+      { title: "Write Tuples — company hierarchy + diana viewer", method: "POST", path: "/stores/{store_id}/write",
+        run: actions.writeTuples([ tk("user:alice", "owner", "folder:company"), tk("folder:company", "parent", "folder:product"), tk("user:diana", "viewer", "folder:company") ]),
+        narration: "alice owns folder:company; folder:company is parent of folder:product; diana views folder:company." },
+      { title: "Check — diana viewer folder:product", method: "POST", path: "/stores/{store_id}/check",
+        run: actions.check("user:diana", "viewer", "folder:product", true), expected: true,
+        narration: "diana is viewer on folder:company, parent of folder:product." },
+      { title: "Check — diana viewer document:roadmap", method: "POST", path: "/stores/{store_id}/check",
+        run: actions.check("user:diana", "viewer", "document:roadmap", true), expected: true,
+        narration: "Two-hop inheritance: folder:company → folder:product → document:roadmap." },
+      { title: "Check — diana editor document:roadmap", method: "POST", path: "/stores/{store_id}/check",
+        run: actions.check("user:diana", "editor", "document:roadmap", false), expected: false,
+        narration: "viewer does not imply editor — diana can only view." }
+    ]
+  },
+  {
+    title: "Chapter 5 — Groups via Usersets",
+    desc: "Grant access to a whole group: organization#member as viewer gives all members access.",
+    steps: [
+      { title: "Write Tuples — acme members + acme#member viewer folder:product", method: "POST", path: "/stores/{store_id}/write",
+        run: actions.writeTuples([ tk("user:eve", "member", "organization:acme"), tk("user:frank", "member", "organization:acme"), tk("organization:acme#member", "viewer", "folder:product") ]),
+        narration: "Adds eve and frank to organization:acme; grants acme#member viewer on folder:product." },
+      { title: "Check — eve viewer document:roadmap", method: "POST", path: "/stores/{store_id}/check",
+        run: actions.check("user:eve", "viewer", "document:roadmap", true), expected: true,
+        narration: "eve ∈ acme; acme#member views folder:product; folder:product is parent of roadmap." },
+      { title: "Check — frank viewer document:roadmap", method: "POST", path: "/stores/{store_id}/check",
+        run: actions.check("user:frank", "viewer", "document:roadmap", true), expected: true,
+        narration: "frank is also a member of acme, same path as eve." },
+      { title: "Write Tuple — add grace to organization:acme", method: "POST", path: "/stores/{store_id}/write",
+        run: actions.writeTuples([ tk("user:grace", "member", "organization:acme") ]),
+        narration: "Adds grace to organization:acme — no new folder tuples needed." },
+      { title: "Check — grace viewer document:roadmap", method: "POST", path: "/stores/{store_id}/check",
+        run: actions.check("user:grace", "viewer", "document:roadmap", true), expected: true,
+        narration: "grace gets access automatically via acme membership." }
+    ]
+  },
+  {
+    title: "Chapter 6 — Public Sharing (Wildcards)",
+    desc: "Wildcard grants give access to everyone. user:* as viewer = a public link.",
+    steps: [
+      { title: "Write Tuples — alice owner + user:* viewer document:public-memo", method: "POST", path: "/stores/{store_id}/write",
+        run: actions.writeTuples([ tk("user:alice", "owner", "document:public-memo"), tk("user:*", "viewer", "document:public-memo") ]),
+        narration: "alice owns it; everyone (user:*) can view it. NOTE: /write is non-idempotent — replaying returns HTTP 400 'already exists'. Use the Appendix → Reset Chapter 6 first." },
+      { title: "Check — randomstranger viewer document:public-memo", method: "POST", path: "/stores/{store_id}/check",
+        run: actions.check("user:randomstranger", "viewer", "document:public-memo", true), expected: true,
+        narration: "user:* is viewer, so any user can view." },
+      { title: "Check — randomstranger editor document:public-memo", method: "POST", path: "/stores/{store_id}/check",
+        run: actions.check("user:randomstranger", "editor", "document:public-memo", false), expected: false,
+        narration: "wildcard only grants viewer, not editor." }
+    ]
+  },
+  {
+    title: "Chapter 7 — Reverse Queries (ListObjects)",
+    desc: "Ask 'which objects of type T can user X access?' — the reverse of Check.",
+    steps: [
+      { title: "ListObjects — documents diana can view", method: "POST", path: "/stores/{store_id}/list-objects",
+        run: actions.listObjects("user:diana", "viewer", "document"), narration: "Returns documents where diana has the viewer relation." },
+      { title: "ListObjects — folders eve can view", method: "POST", path: "/stores/{store_id}/list-objects",
+        run: actions.listObjects("user:eve", "viewer", "folder"), narration: "Which folders can eve view?" },
+      { title: "ListObjects — documents alice can view", method: "POST", path: "/stores/{store_id}/list-objects",
+        run: actions.listObjects("user:alice", "viewer", "document"), narration: "Which documents can alice view?" }
+    ]
+  },
+  {
+    title: "Chapter 8 — Expand (Resolution Tree)",
+    desc: "Expand shows WHY a permission exists by returning the full resolution tree.",
+    steps: [
+      { title: "Expand — viewer on document:roadmap", method: "POST", path: "/stores/{store_id}/expand",
+        run: actions.expand("viewer", "document:roadmap"),
+        narration: "SDK: Expand. Returns the userset tree for viewer on document:roadmap." }
+    ]
+  },
+  {
+    title: "Appendix — Other tuple ops",
+    desc: "Reading and deleting tuples, the Chapter 6 reset, and store cleanup. Not run by 'Run all'.",
+    skipRunAll: true,
+    steps: [
+      { title: "Read Tuples — all for document:roadmap", method: "POST", path: "/stores/{store_id}/read",
+        run: actions.readTuples("document:roadmap"), narration: "Reads directly-written tuples (not computed/inherited ones)." },
+      { title: "Delete Tuple — alice owner document:roadmap", method: "POST", path: "/stores/{store_id}/write",
+        run: actions.deleteTuples([ tk("user:alice", "owner", "document:roadmap") ]),
+        narration: "Deletes via /write 'deletes' block. After this, the Ch.2 alice-viewer check becomes DENIED." },
+      { title: "Reset Chapter 6 (delete public-memo tuples)", method: "POST", path: "/stores/{store_id}/write ×N + /read",
+        run: actions.resetCh6(), narration: "Idempotently clears Ch.6's tuples so its Write step can be replayed on the same store." },
+      { title: "Delete Store", method: "DELETE", path: "/stores/{store_id}",
+        run: actions.deleteStore(), narration: "Tears down the demo store. Run last to clean up." }
+    ]
+  }
+];
+
+// ---------------------------------------------------------------------------
+// Rendering
+// ---------------------------------------------------------------------------
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+
+function renderResult(container, out) {
+  const v = out.verdict;
+  container.innerHTML = "";
+  const badge = el("span", "badge " + (v.kind === "info" ? "warn" : v.kind), v.label);
+  container.appendChild(badge);
+  container.appendChild(document.createTextNode(v.detail || ""));
+  const pre = el("pre");
+  pre.textContent = "→ " + out.req.method + " " + out.req.path +
+    (out.req.body ? "\n" + JSON.stringify(out.req.body, null, 2) : "") +
+    "\n\n← HTTP " + out.r.status + "\n" + JSON.stringify(out.r.json, null, 2);
+  container.appendChild(pre);
+  container.classList.add("show");
+}
+
+function renderError(container, err) {
+  container.innerHTML = "";
+  container.appendChild(el("span", "badge bad", "BLOCKED"));
+  container.appendChild(document.createTextNode(err.message));
+  container.classList.add("show");
+}
+
+function build() {
+  const root = document.getElementById("chapters");
+  CHAPTERS.forEach((ch, ci) => {
+    const det = el("details", "chapter");
+    if (ci < 2) det.open = true;
+    const sum = el("summary");
+    sum.appendChild(el("span", "ch-num", "CH " + (ci + 1 <= 8 ? ci + 1 : "+")));
+    sum.appendChild(el("h2", null, ch.title.replace(/^Chapter \d+ — |^Appendix — /, "")));
+    sum.appendChild(el("div", "ch-desc", ch.desc));
+    det.appendChild(sum);
+
+    const steps = el("div", "steps");
+    ch.steps.forEach(step => {
+      const card = el("div", "step");
+      const head = el("div", "step-head");
+      head.appendChild(el("span", "method " + step.method, step.method));
+      head.appendChild(el("span", "title", step.title));
+      const btn = el("button", "run", "Run");
+      head.appendChild(btn);
+      card.appendChild(head);
+      card.appendChild(el("div", "path", step.path));
+
+      const narr = el("div", "narration");
+      narr.innerHTML = "<span class='because'>" + step.narration + "</span>";
+      if (typeof step.expected === "boolean") {
+        narr.appendChild(el("div", "expected", "Expected: " + (step.expected ? "ALLOWED" : "DENIED")));
+      }
+      card.appendChild(narr);
+
+      const result = el("div", "result");
+      card.appendChild(result);
+
+      const exec = async () => {
+        btn.disabled = true; btn.textContent = "…";
+        try {
+          const out = await step.run();
+          renderResult(result, out);
+          return out.verdict.kind;
+        } catch (err) {
+          renderError(result, err);
+          return "bad";
+        } finally {
+          btn.disabled = false; btn.textContent = "Run";
+        }
+      };
+      btn.addEventListener("click", exec);
+      step._exec = exec;
+      step._card = card;
+      steps.appendChild(card);
+    });
+    det.appendChild(steps);
+    root.appendChild(det);
+  });
+}
+
+async function runAll() {
+  const btn = document.getElementById("runAll");
+  btn.disabled = true; btn.textContent = "Running…";
+  try {
+    for (const ch of CHAPTERS) {
+      if (ch.skipRunAll) continue;
+      for (const step of ch.steps) {
+        step._card.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        const kind = await step._exec();
+        if (kind === "bad") { btn.textContent = "✗ Stopped (mismatch/error) — see above"; return; }
+      }
+    }
+    btn.textContent = "✓ All chapters passed";
+  } finally {
+    setTimeout(() => { btn.disabled = false; btn.textContent = "▶ Run all chapters"; }, 2500);
+  }
+}
+
+document.getElementById("runAll").addEventListener("click", runAll);
+document.getElementById("resetState").addEventListener("click", () => { setStore(""); setModel(""); });
+renderPills();
+build();
+</script>
+</body>
+</html>

@@ -1,0 +1,211 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "OpenFGA Demo API (trimmed)",
+    "version": "1.0.0",
+    "description": "A focused OpenAPI spec covering only the endpoints exercised by the OpenFGA ReBAC teaching demo (the same calls used by web/index.html, the Postman collection, and cmd/cli). For the complete OpenFGA API surface see https://github.com/openfga/api.\n\nWorkflow: POST /stores to create a store, then POST /stores/{store_id}/authorization-models to write the model, then use /write, /check, /read, /list-objects, /expand. Copy the returned id / authorization_model_id into the path params and request bodies below."
+  },
+  "servers": [
+    { "url": "http://localhost:8080", "description": "Local OpenFGA (docker-compose; make up)" }
+  ],
+  "tags": [
+    { "name": "Stores", "description": "Store lifecycle" },
+    { "name": "Authorization Models", "description": "Model authoring" },
+    { "name": "Relationship Tuples", "description": "Write / delete / read tuples" },
+    { "name": "Relationship Queries", "description": "Check, ListObjects, Expand" }
+  ],
+  "paths": {
+    "/stores": {
+      "get": {
+        "tags": ["Stores"],
+        "summary": "List stores",
+        "operationId": "listStores",
+        "responses": { "200": { "description": "List of stores" } }
+      },
+      "post": {
+        "tags": ["Stores"],
+        "summary": "Create a store",
+        "operationId": "createStore",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreateStoreRequest" },
+            "example": { "name": "openfga-demo" } } }
+        },
+        "responses": { "201": { "description": "Store created (returns id)" } }
+      }
+    },
+    "/stores/{store_id}": {
+      "parameters": [ { "$ref": "#/components/parameters/StoreId" } ],
+      "get": {
+        "tags": ["Stores"], "summary": "Get a store", "operationId": "getStore",
+        "responses": { "200": { "description": "Store metadata" } }
+      },
+      "delete": {
+        "tags": ["Stores"], "summary": "Delete a store", "operationId": "deleteStore",
+        "responses": { "204": { "description": "Store deleted" } }
+      }
+    },
+    "/stores/{store_id}/authorization-models": {
+      "parameters": [ { "$ref": "#/components/parameters/StoreId" } ],
+      "get": {
+        "tags": ["Authorization Models"], "summary": "Read authorization models (newest first)", "operationId": "readModels",
+        "responses": { "200": { "description": "List of models" } }
+      },
+      "post": {
+        "tags": ["Authorization Models"], "summary": "Write an authorization model", "operationId": "writeModel",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/WriteModelRequest" } } }
+        },
+        "responses": { "201": { "description": "Model written (returns authorization_model_id)" } }
+      }
+    },
+    "/stores/{store_id}/write": {
+      "parameters": [ { "$ref": "#/components/parameters/StoreId" } ],
+      "post": {
+        "tags": ["Relationship Tuples"],
+        "summary": "Write or delete relationship tuples",
+        "description": "Transactional and NOT idempotent: writing a tuple that already exists (or deleting one that does not) fails the whole batch with HTTP 400. Send a 'writes' block or a 'deletes' block.",
+        "operationId": "write",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/WriteRequest" },
+            "examples": {
+              "write": { "summary": "Write a tuple", "value": { "writes": { "tuple_keys": [ { "user": "user:alice", "relation": "owner", "object": "document:roadmap" } ] }, "authorization_model_id": "REPLACE_WITH_MODEL_ID" } },
+              "delete": { "summary": "Delete a tuple", "value": { "deletes": { "tuple_keys": [ { "user": "user:alice", "relation": "owner", "object": "document:roadmap" } ] }, "authorization_model_id": "REPLACE_WITH_MODEL_ID" } }
+            } } }
+        },
+        "responses": { "200": { "description": "Tuples written/deleted" }, "400": { "description": "Tuple already exists / does not exist" } }
+      }
+    },
+    "/stores/{store_id}/read": {
+      "parameters": [ { "$ref": "#/components/parameters/StoreId" } ],
+      "post": {
+        "tags": ["Relationship Tuples"],
+        "summary": "Read relationship tuples",
+        "description": "Returns directly-written tuples (not computed/inherited ones). The tuple_key filter is optional.",
+        "operationId": "read",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ReadRequest" },
+            "example": { "tuple_key": { "object": "document:roadmap" } } } }
+        },
+        "responses": { "200": { "description": "Matching tuples" } }
+      }
+    },
+    "/stores/{store_id}/check": {
+      "parameters": [ { "$ref": "#/components/parameters/StoreId" } ],
+      "post": {
+        "tags": ["Relationship Queries"],
+        "summary": "Check — is (user, relation, object) allowed?",
+        "operationId": "check",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CheckRequest" },
+            "example": { "tuple_key": { "user": "user:alice", "relation": "viewer", "object": "document:roadmap" }, "authorization_model_id": "REPLACE_WITH_MODEL_ID" } } }
+        },
+        "responses": { "200": { "description": "{ \"allowed\": true|false }" } }
+      }
+    },
+    "/stores/{store_id}/list-objects": {
+      "parameters": [ { "$ref": "#/components/parameters/StoreId" } ],
+      "post": {
+        "tags": ["Relationship Queries"],
+        "summary": "ListObjects — which objects of a type can a user access?",
+        "operationId": "listObjects",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ListObjectsRequest" },
+            "example": { "type": "document", "relation": "viewer", "user": "user:alice", "authorization_model_id": "REPLACE_WITH_MODEL_ID" } } }
+        },
+        "responses": { "200": { "description": "{ \"objects\": [ ... ] }" } }
+      }
+    },
+    "/stores/{store_id}/expand": {
+      "parameters": [ { "$ref": "#/components/parameters/StoreId" } ],
+      "post": {
+        "tags": ["Relationship Queries"],
+        "summary": "Expand — the resolution tree for a (relation, object)",
+        "operationId": "expand",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ExpandRequest" },
+            "example": { "tuple_key": { "relation": "viewer", "object": "document:roadmap" }, "authorization_model_id": "REPLACE_WITH_MODEL_ID" } } }
+        },
+        "responses": { "200": { "description": "Userset resolution tree" } }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "StoreId": {
+        "name": "store_id", "in": "path", "required": true,
+        "description": "Store id returned by POST /stores",
+        "schema": { "type": "string" }
+      }
+    },
+    "schemas": {
+      "TupleKey": {
+        "type": "object",
+        "properties": {
+          "user": { "type": "string", "example": "user:alice" },
+          "relation": { "type": "string", "example": "viewer" },
+          "object": { "type": "string", "example": "document:roadmap" }
+        }
+      },
+      "TupleKeys": {
+        "type": "object",
+        "properties": { "tuple_keys": { "type": "array", "items": { "$ref": "#/components/schemas/TupleKey" } } }
+      },
+      "CreateStoreRequest": {
+        "type": "object", "required": ["name"],
+        "properties": { "name": { "type": "string" } }
+      },
+      "WriteModelRequest": {
+        "type": "object", "required": ["schema_version", "type_definitions"],
+        "properties": {
+          "schema_version": { "type": "string", "example": "1.1" },
+          "type_definitions": { "type": "array", "items": { "type": "object" } }
+        }
+      },
+      "WriteRequest": {
+        "type": "object",
+        "properties": {
+          "writes": { "$ref": "#/components/schemas/TupleKeys" },
+          "deletes": { "$ref": "#/components/schemas/TupleKeys" },
+          "authorization_model_id": { "type": "string" }
+        }
+      },
+      "ReadRequest": {
+        "type": "object",
+        "properties": { "tuple_key": { "$ref": "#/components/schemas/TupleKey" } }
+      },
+      "CheckRequest": {
+        "type": "object", "required": ["tuple_key"],
+        "properties": {
+          "tuple_key": { "$ref": "#/components/schemas/TupleKey" },
+          "authorization_model_id": { "type": "string" }
+        }
+      },
+      "ListObjectsRequest": {
+        "type": "object", "required": ["type", "relation", "user"],
+        "properties": {
+          "type": { "type": "string", "example": "document" },
+          "relation": { "type": "string", "example": "viewer" },
+          "user": { "type": "string", "example": "user:alice" },
+          "authorization_model_id": { "type": "string" }
+        }
+      },
+      "ExpandRequest": {
+        "type": "object", "required": ["tuple_key"],
+        "properties": {
+          "tuple_key": {
+            "type": "object",
+            "properties": { "relation": { "type": "string" }, "object": { "type": "string" } }
+          },
+          "authorization_model_id": { "type": "string" }
+        }
+      }
+    }
+  }
+}
