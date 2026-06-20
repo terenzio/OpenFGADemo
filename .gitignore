@@ -35,6 +35,9 @@ go.work.sum
 # .idea/
 # .vscode/
 
+# macOS Finder metadata
+.DS_Store
+
 # Claude Code — per-developer local settings (machine-specific, may contain
 # absolute paths). Shared team config in .claude/settings.json is NOT ignored.
 **/.claude/settings.local.json
