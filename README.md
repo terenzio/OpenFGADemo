@@ -23,8 +23,8 @@ Install these before the workshop begins.
 | --- | --- | --- |
 | [OpenFGA CLI](https://openfga.dev/docs/getting-started/install-sdk) | Steps 1–3 (model authoring & tests) | `brew install openfga/tap/fga` |
 | [Docker](https://docs.docker.com/get-docker/) + Compose | Step 4 (live server demo) | per platform |
-| [Go 1.22+](https://go.dev/dl/) | Step 4 (live server demo) | per platform |
-| `curl`, `jq` | Step 4 (HTTP examples) | per platform |
+| [Go 1.22+](https://go.dev/dl/) | [OPTIONAL] Step 4 (live server demo) | per platform |
+| `curl`, `jq` | [OPTIONAL] Step 4 (HTTP examples) | per platform |
 
 Verify your install:
 
