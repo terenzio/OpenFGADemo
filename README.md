@@ -60,7 +60,7 @@ OpenFGADemo/
 | --- | --- | --- |
 | [models/basic/](models/basic/) | DSL syntax, types, base relations, role implication, parent inheritance, wildcards | ~10 min |
 | [models/mcp-guide/](models/mcp-guide/) | Why you should expose `can_*` permissions instead of role names | ~15 min |
-| [models/ai-agent/](models/ai-agent/) | Bounded delegation to AI agents using intersection (`and`) | ~20 min |
+| [models/ai-agent/](models/ai-agent/) | AI agents as first-class principals, granted by role and bounded to a subtree | ~20 min |
 
 ---
 
@@ -147,13 +147,14 @@ the `editor` role on `folder:product`. Then add an assertion that he
 
 ---
 
-## Step 3 — Bounded Delegation to AI Agents
+## Step 3 — AI Agents as First-Class Principals
 
 The most advanced model is in [models/ai-agent/](models/ai-agent/). It answers a
 question you face the moment you give an AI agent credentials: **how do I let an
-agent edit some of my files, but not all of them?**
+agent act on some of my files, but not all of them?**
 
-The pattern uses an intersection (`and`):
+The pattern adds an `agent` type and lets agents be granted the same roles as
+users. Access is role-based and bounded to a subtree by inheritance:
 
 ```fga
 type agent
@@ -167,19 +168,16 @@ type folder
     define editor: [user, agent] or owner or editor from parent
     define viewer: [user, user:*, agent] or editor or viewer from parent
 
-    define edit_authorized:   [user:*, agent] or edit_authorized from parent
-    define delete_authorized: [user:*, agent] or delete_authorized from parent
-
     define can_view:   viewer
-    define can_edit:   editor and edit_authorized
-    define can_delete: editor and delete_authorized
+    define can_edit:   editor
+    define can_delete: editor
     define can_share:  owner
 ```
 
 The full explanation is in
-[concepts.md → Intersections and bounded delegation](concepts.md#intersections-and-and-bounded-delegation).
-It covers why the intersection limits the agent, why `user:*` lets humans pass
-but not agents, and how subtree scoping works.
+[concepts.md → AI agents as first-class principals](concepts.md#ai-agents-as-first-class-principals).
+It covers how agents are granted by role, why they are denied by default, and how
+subtree scoping bounds a grant.
 
 **Run the tests:**
 
@@ -192,9 +190,9 @@ Expected: **5 tests passed, 0 failed**.
 
 Cases worth tracing by hand:
 
-- `agent:scribe` is `editor` and `edit_authorized` on `folder:projects`, so it `can_edit` `file:report`. But it has **no** `delete_authorized`, so `can_delete` is false.
-- `agent:janitor` has `delete_authorized` on `folder:projects` but **not** `folder:root`. So it can delete `file:report` but not `file:secret` (which sits directly under root).
-- `list_objects(agent:scribe, file, can_edit)` returns only `file:report`. The intersection is checked during the listing too, so the agent can't even *find* files outside its grant.
+- `agent:scribe` is `editor` on `folder:projects`, so it can view, edit, and delete `file:report`. It has no role on `folder:root`, so `file:secret` (directly under root) is off-limits — agents are denied by default.
+- `agent:reader` is `viewer` on `folder:root`, so it can read both files via inheritance but can never edit or delete them.
+- `list_objects(agent:scribe, file, can_edit)` returns only `file:report`. The role is checked during the listing too, so the agent can't even *find* files outside its grant.
 
 ---
 
@@ -317,7 +315,7 @@ OpenFGADemo/
 │   ├── basic/        # Step 1: DSL syntax and base relations
 │   ├── mcp-guide/    # Step 2: can_* permission relations + tests
 │   │   └── mcp_guidance/   # Official "define permissions" guidance from the MCP server
-│   └── ai-agent/     # Step 3: bounded AI-agent delegation + tests
+│   └── ai-agent/     # Step 3: AI agents as first-class principals + tests
 ├── web/              # Zero-install browser walkthrough + Swagger UI (make web)
 │   ├── index.html             # Narrated 8-chapter raw-API walkthrough
 │   ├── swagger.html           # Swagger UI rendered from the spec below

@@ -39,7 +39,7 @@ By the end of the workshop you will have written, tested, and thought through:
 - **Userset references** — `organization:acme#member` grants access to a whole group
 - **Wildcards** — `user:*` makes an object public to everyone
 - **Permission relations** — `can_view` / `can_edit` / `can_share` as the API for app code
-- **Intersections** (`and`) — capability gates that limit what an AI agent can do
+- **AI agents as principals** — granting agents roles and bounding them to a subtree
 - **The five core API operations** — `Check`, `Write`, `Delete`, `ListObjects`, `Expand`
 
 ---
@@ -105,13 +105,14 @@ model, not every call site. This is the main lesson of
 [Step 2](README.md#step-2--add-permission-relations-and-run-your-first-tests):
 **always define permissions in the authorization model.**
 
-### Intersections (`and`) and bounded delegation
+### AI agents as first-class principals
 
 The [AI-agent model](models/ai-agent/authorization-model-ai-agent.fga) answers a
 question you face the moment you give an AI agent credentials: **how do I let an
-agent edit some of my files, but not all of them?**
+agent act on some of my files, but not all of them?**
 
-The pattern uses an intersection:
+The pattern adds an `agent` type and lets agents be granted the same roles as
+users:
 
 ```fga
 type agent
@@ -125,27 +126,23 @@ type folder
     define editor: [user, agent] or owner or editor from parent
     define viewer: [user, user:*, agent] or editor or viewer from parent
 
-    define edit_authorized:   [user:*, agent] or edit_authorized from parent
-    define delete_authorized: [user:*, agent] or delete_authorized from parent
-
     define can_view:   viewer
-    define can_edit:   editor and edit_authorized
-    define can_delete: editor and delete_authorized
+    define can_edit:   editor
+    define can_delete: editor
     define can_share:  owner
 ```
 
-The three ideas:
+The two ideas:
 
-1. **Intersection (`and`).** Being an `editor` is no longer enough on its own. A
-   separate `edit_authorized` capability must also be true. If either side is
-   missing → denied.
-2. **Different default for users vs. agents.** The seed tuple
-   `(user:*, edit_authorized, folder:root)` lets every human pass the gate
-   everywhere — humans act just as in Step 2. `user:*` does **not** match agents,
-   so agents start with no capability and need an explicit grant per folder.
-3. **Subtree scoping comes for free.** `or edit_authorized from parent` means one
-   grant `(agent:bot, edit_authorized, folder:projects)` covers every folder and
-   file below it — and only those.
+1. **Agents are principals, granted by role.** Both `editor` and `viewer` accept
+   `[..., agent]`, so an agent can hold a role exactly like a user. No role on an
+   object or its ancestors means no access — agents are **denied by default**.
+   Note that the `user:*` wildcard on `viewer` matches *users*, not agents, so it
+   never silently grants an agent anything; each agent grant is explicit.
+2. **Subtree scoping comes for free.** `editor from parent` / `viewer from parent`
+   means one grant `(agent:bot, editor, folder:projects)` covers every folder and
+   file below it — and only those. Move a file elsewhere and the agent loses
+   access.
 
 `can_share` is kept for `owner` and can never be given to agents.
 
@@ -153,10 +150,10 @@ The `agent.principal` relation records which user an agent acts for. It is for
 information only — useful for audit logs and app-side guardrails — and does not
 appear in any permission expression.
 
-> **Discussion prompt:** suppose you wanted a one-shot capability that expires
-> after a single edit. The model cannot express time, so where in the app would
-> you enforce it? (Answer: write the tuple before the call, delete it after.
-> OpenFGA gives you the gate; your code runs the timer.)
+> **Discussion prompt:** suppose you wanted a one-shot edit capability that
+> expires after a single use. The model cannot express time, so where in the app
+> would you enforce it? (Answer: write the `editor` tuple before the call, delete
+> it after. OpenFGA gives you the grant; your code runs the timer.)
 
 ---
 

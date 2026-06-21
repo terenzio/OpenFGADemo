@@ -1,14 +1,16 @@
 # Agent Authorization Demo
 
-An OpenFGA model for **AI agents acting on behalf of users**. Here, risky
-operations on files (`can_edit`, `can_delete`) need an extra capability. Giving
-the agent an `editor` role is not enough. Risky ops are denied by default. They
-are allowed only when granted, and only within set limits. `can_share` is kept
-for owners and can never be given to agents.
+An OpenFGA model for **AI agents acting on behalf of users**. Agents are
+**first-class principals** alongside users: they get access by being granted a
+role (`viewer`, `editor`, or `owner`), and they are **denied by default**
+anywhere they hold no role. Roles cascade down the folder hierarchy, so a single
+grant bounds an agent to one subtree. `can_share` stays with owners and is never
+given to agents.
 
-It sits next to [`../mcp-guide/`](../mcp-guide/), which shows the basic OpenFGA
-permission-alias pattern (`can_edit: editor`). This demo adds an
-intersection-based capability gate on top.
+It sits next to [`../mcp-guide/`](../mcp-guide/), which shows the same
+permission-alias pattern (`can_edit: editor`) for human users. This demo adds the
+`agent` type so agents can be granted those same roles and reasoned about
+explicitly.
 
 ---
 
@@ -23,37 +25,33 @@ type agent
 
 type folder
   relations
+    define owner: [user]
+    define parent: [folder]
     define editor: [user, agent] or owner or editor from parent
-
-    define edit_authorized:   [user:*, agent] or edit_authorized from parent
-    define delete_authorized: [user:*, agent] or delete_authorized from parent
+    define viewer: [user, user:*, agent] or editor or viewer from parent
 
     define can_view:   viewer
-    define can_edit:   editor and edit_authorized
-    define can_delete: editor and delete_authorized
+    define can_edit:   editor
+    define can_delete: editor
     define can_share:  owner
 ```
 
 (`type file` mirrors `folder` for the same `can_*` definitions.)
 
-Three ideas combined:
+Two ideas combined:
 
-1. **Intersection (`and`).** Being an `editor` is not enough on its own. A
-   separate capability relation must also be true. If either side is missing, the
-   action is denied.
-2. **Different default for users vs. agents.** The seed tuple
-   `(user:*, edit_authorized, folder:root)` lets every human pass the gate
-   everywhere. So humans are not affected by the new check. `user:*` does **not**
-   match agents. So agents start with no capability and need an explicit grant
-   per folder.
-3. **Subtree scoping comes for free.** `or edit_authorized from parent` means one
-   grant `(agent:bot, edit_authorized, folder:projects)` covers every folder and
-   file below it — and only those. Move the file elsewhere, and it loses the
-   capability.
+1. **Agents are principals, granted by role.** Both `editor` and `viewer` accept
+   `[..., agent]`, so an agent can be assigned a role exactly like a user. No
+   role on an object (or its ancestors) means no access — agents are denied by
+   default.
+2. **Subtree scoping comes for free.** `editor from parent` / `viewer from parent`
+   means one grant `(agent:bot, editor, folder:projects)` covers every folder and
+   file below it — and only those. Move a file elsewhere and the agent loses
+   access, no app-code change needed.
 
-The result: giving an agent `editor` on a folder lets it view content. But to
-let it write or delete, you must add a separate grant for each capability.
-Sharing stays with owners and can never be given to agents.
+The result: granting an agent `viewer` lets it read; granting `editor` lets it
+read, write, and delete within that subtree. Sharing stays with owners and can
+never be given to agents.
 
 > The `agent.principal` relation records which user an agent acts for. It is for
 > information only — useful for audit logs and app-side guardrails — and does not
@@ -66,26 +64,25 @@ Sharing stays with owners and can never be given to agents.
 [`tests.fga.yaml`](tests.fga.yaml) seeds:
 
 ```text
-folder:root              ← user:alice (owner)
-├── folder:projects      ← agent:scribe   (editor + edit_authorized)
-│   │                    ← agent:janitor  (editor + edit_authorized + delete_authorized)
+folder:root              ← user:alice  (owner)
+│                        ← agent:reader (viewer — read-only, whole tree)
+├── folder:projects      ← agent:scribe (editor — read/write/delete here)
 │   └── file:report
 └── file:secret
 
-agent:scribe.principal  = user:alice
-agent:janitor.principal = user:alice
-
-(user:*, edit_authorized,   folder:root)   ← humans always pass the gate
-(user:*, delete_authorized, folder:root)
+agent:scribe.principal = user:alice
+agent:reader.principal = user:alice
 ```
 
 Two agents, both delegated by alice:
 
-- **`agent:scribe`** — edit only, scoped to `folder:projects/`.
-- **`agent:janitor`** — edit and delete, scoped to `folder:projects/`.
+- **`agent:scribe`** — `editor` scoped to `folder:projects/` (read, write, delete
+  there; nothing on `folder:root` itself).
+- **`agent:reader`** — `viewer` on `folder:root` (read everything under root,
+  never write or delete).
 
-Neither agent has any capability on `folder:root` itself. So `file:secret` (which
-sits directly under root) is off-limits to both.
+Because `agent:scribe` has no role on `folder:root`, `file:secret` (which sits
+directly under root) is off-limits to it.
 
 ---
 
@@ -99,7 +96,7 @@ fga model test --tests tests.fga.yaml
 
 Expected: **5 tests passed, 0 failed**.
 
-### Test 1 — Alice (human owner) is unaffected by the gate
+### Test 1 — Alice (human owner) keeps full access via cascade
 
 ```yaml
 user: user:alice
@@ -111,13 +108,11 @@ assertions:
   can_share:  false   # share requires a direct owner tuple on file:report
 ```
 
-Alice is `owner` of `folder:root`. That passes `editor` down to `file:report` via
-`editor from parent`. The seeds `(user:*, edit_authorized, folder:root)` and
-`(user:*, delete_authorized, folder:root)` cover the right side of each
-intersection. `can_share` is false because the share check needs a direct `owner`
-tuple on the file itself — sharing does not flow down.
+Alice is `owner` of `folder:root`, which passes `editor` down to `file:report`
+via `editor from parent`. `can_share` is false because the share check needs a
+direct `owner` tuple on the file itself — sharing does not flow down.
 
-### Test 2 — agent:scribe can edit but not delete
+### Test 2 — agent:scribe can read, edit and delete in its subtree
 
 ```yaml
 user: agent:scribe
@@ -125,19 +120,15 @@ object: file:report
 assertions:
   can_view:   true
   can_edit:   true
-  can_delete: false   # no delete_authorized for scribe
+  can_delete: true
   can_share:  false
 ```
 
-`agent:scribe` is `editor` on `folder:projects` (which passes down to
-`file:report`) and has `edit_authorized` on `folder:projects`. Both sides of
-`editor and edit_authorized` are true → `can_edit` is true. But scribe has **no**
-`delete_authorized` tuple anywhere, so `can_delete` fails the intersection.
+`agent:scribe` is `editor` on `folder:projects`, which passes down to
+`file:report`. The editor role carries view, edit, and delete. Sharing still
+requires `owner`, so `can_share` is false.
 
-This is the key case: giving an agent `editor` is not enough on its own. You must
-add the second tuple yourself, one per capability.
-
-### Test 3 — agent:scribe can't even see file:secret
+### Test 3 — agent:scribe is denied by default outside its grant
 
 ```yaml
 user: agent:scribe
@@ -149,88 +140,91 @@ assertions:
   can_share:  false
 ```
 
-`file:secret` sits directly under `folder:root`. `agent:scribe` has no `editor`
-relation on root, and `user:*` does not match agents. So neither path applies.
-Agents are denied by default in any scope they were not granted.
+`file:secret` sits directly under `folder:root`. `agent:scribe` has no role on
+root, and `user:*` (the viewer wildcard) does not match agents. So no path
+applies — agents are denied by default in any scope they were not granted.
 
-### Test 4 — agent:janitor's delete is bounded to the projects subtree
+### Test 4 — agent:reader can read everything but never write
 
 ```yaml
-- user: agent:janitor
+- user: agent:reader
   object: file:report
   assertions:
-    can_edit:   true
-    can_delete: true       # has delete_authorized on folder:projects
-- user: agent:janitor
+    can_view:   true
+    can_edit:   false
+    can_delete: false
+- user: agent:reader
   object: file:secret
   assertions:
-    can_edit:   false      # no editor on root
-    can_delete: false      # no delete_authorized on root
+    can_view:   true
+    can_edit:   false
+    can_delete: false
 ```
 
-The same agent that can delete `file:report` cannot touch `file:secret`, even
-though both files have the same human owner. The capability tuple is scoped to a
-subtree, and OpenFGA enforces that scope on every Check. Move a file from
-`folder:projects` to under `folder:root`, and the agent quietly loses access — no
-app code change needed.
+`agent:reader` is `viewer` on `folder:root`, so it can read both files via
+`viewer from parent`. But `viewer` is not `editor`, so `can_edit` and
+`can_delete` are false everywhere. This is the read-only-agent pattern: useful
+for summarizers or search agents that should never mutate data.
 
-### Test 5 — `list_objects` enforces the intersection during enumeration
+### Test 5 — `list_objects` reflects each agent's role
 
 ```yaml
 list_objects:
   - user: agent:scribe
     type: file
     assertions:
-      can_edit:   [file:report]
-      can_delete: []
+      can_edit: [file:report]
+      can_view: [file:report]
+  - user: agent:reader
+    type: file
+    assertions:
+      can_edit: []
+      can_view: [file:report, file:secret]
 ```
 
-`list_objects(agent:scribe, file, can_edit)` returns only `file:report`. The
-agent cannot even *find* files outside its grant. This matters for autonomy: an
-LLM-driven agent that asks "which files can I edit?" gets back only the allowed
-set, never `file:secret`.
+`list_objects(agent:scribe, file, can_edit)` returns only `file:report` — the
+agent cannot even *find* files outside its grant. `agent:reader` can edit nothing
+but can view both files. This matters for autonomy: an LLM-driven agent that asks
+"which files can I edit?" gets back only the allowed set.
 
 ---
 
 ## What's different vs `../mcp-guide/`
 
-| Concept                 | `../mcp-guide/`                  | `ai-agent/` (this demo)                                          |
-| ----------------------- | -------------------------------- | ---------------------------------------------------------------- |
-| Principals              | `user`                           | `user` + `agent`                                                 |
-| `can_edit` definition   | `editor`                         | `editor and edit_authorized`                                     |
-| `can_delete` definition | `editor`                         | `editor and delete_authorized`                                   |
-| `can_share` definition  | `owner`                          | `owner` (unchanged)                                              |
-| Capability relations    | none                             | `edit_authorized`, `delete_authorized`                           |
-| Default for non-owners  | role-based                       | role-based for users; agents denied by default on risky ops      |
+| Concept                 | `../mcp-guide/`  | `ai-agent/` (this demo)                            |
+| ----------------------- | ---------------- | -------------------------------------------------- |
+| Principals              | `user`           | `user` + `agent`                                   |
+| `can_edit` definition   | `editor`         | `editor` (same alias, now grantable to agents)     |
+| `can_delete` definition | `editor`         | `editor`                                           |
+| `can_share` definition  | `owner`          | `owner` (never granted to agents)                  |
+| Role inheritance        | `from parent`    | `from parent` (bounds an agent to a subtree)       |
+| Default for non-owners  | role-based       | role-based; agents denied by default where no role |
 
 ---
 
 ## Try changing it
 
-Add a one-shot, edit-only agent under root:
+Add a read-only agent under `folder:projects` only:
 
 ```yaml
 # Add to tuples:
 - user: agent:newbot
-  relation: editor
-  object: folder:root
-- user: agent:newbot
-  relation: edit_authorized
-  object: folder:root
+  relation: viewer
+  object: folder:projects
 
 # Add to tests:
-- name: agent:newbot can edit anywhere but never delete
+- name: agent:newbot can read file:report but not file:secret, and never edits
   check:
     - user: agent:newbot
       object: file:report
       assertions:
-        can_edit:   true
-        can_delete: false
+        can_view:   true
+        can_edit:   false
     - user: agent:newbot
       object: file:secret
       assertions:
-        can_edit:   true
-        can_delete: false
+        can_view:   false
+        can_edit:   false
 ```
 
 You should see **6 tests passed**.

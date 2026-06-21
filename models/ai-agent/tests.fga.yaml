@@ -24,37 +24,20 @@ tuples:
     object: agent:scribe
   - user: user:alice
     relation: principal
-    object: agent:janitor
+    object: agent:reader
 
-  # Agents granted editor role
+  # agent:scribe is an editor on folder:projects (read + write + delete in that subtree)
   - user: agent:scribe
     relation: editor
     object: folder:projects
-  - user: agent:janitor
-    relation: editor
-    object: folder:root
 
-  # Global gate: humans always authorized everywhere
-  - user: user:*
-    relation: edit_authorized
+  # agent:reader is a viewer on folder:root (read-only, everywhere under root)
+  - user: agent:reader
+    relation: viewer
     object: folder:root
-  - user: user:*
-    relation: delete_authorized
-    object: folder:root
-
-  # Bounded agent grants
-  - user: agent:scribe
-    relation: edit_authorized
-    object: folder:projects
-  - user: agent:janitor
-    relation: edit_authorized
-    object: folder:projects
-  - user: agent:janitor
-    relation: delete_authorized
-    object: folder:projects
 
 tests:
-  - name: Alice (owner of root) can view, edit, delete file:report via cascade — but not share (share requires direct owner tuple)
+  - name: Alice (owner of root) can view, edit, delete file:report via cascade — but not share (share requires a direct owner tuple)
     check:
       - user: user:alice
         object: file:report
@@ -63,16 +46,18 @@ tests:
           can_edit: true
           can_delete: true
           can_share: false
-  - name: agent:scribe is editor + edit_authorized via projects → can_edit, but no delete_authorized → cannot delete
+
+  - name: agent:scribe is editor on folder:projects → can view, edit and delete file:report; cannot share
     check:
       - user: agent:scribe
         object: file:report
         assertions:
           can_view: true
           can_edit: true
-          can_delete: false
+          can_delete: true
           can_share: false
-  - name: agent:scribe has no editor or edit_authorized on root → cannot edit file:secret
+
+  - name: agent:scribe has no role on folder:root → denied by default on file:secret
     check:
       - user: agent:scribe
         object: file:secret
@@ -81,23 +66,37 @@ tests:
           can_edit: false
           can_delete: false
           can_share: false
-  - name: agent:janitor delete_authorized is bounded to projects/ subtree
+
+  - name: agent:reader is a viewer on folder:root → can read everything but never edit or delete
     check:
-      - user: agent:janitor
+      - user: agent:reader
         object: file:report
         assertions:
-          can_edit: true
-          can_delete: true
-      - user: agent:janitor
-        object: file:secret
-        assertions:
+          can_view: true
           can_edit: false
           can_delete: false
-  - name: list_objects(agent:scribe, file, can_edit) returns only file:report (intersection enforced during enumeration)
+          can_share: false
+      - user: agent:reader
+        object: file:secret
+        assertions:
+          can_view: true
+          can_edit: false
+          can_delete: false
+          can_share: false
+
+  - name: list_objects reflects each agent's role (scribe edits only its subtree; reader edits nothing)
     list_objects:
       - user: agent:scribe
         type: file
         assertions:
           can_edit:
             - file:report
-          can_delete: []
+          can_view:
+            - file:report
+      - user: agent:reader
+        type: file
+        assertions:
+          can_edit: []
+          can_view:
+            - file:report
+            - file:secret

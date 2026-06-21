@@ -220,7 +220,7 @@ Expected output: **5 tests passed, 0 failed**.
 
 ## Further reading
 
-- [`../ai-agent/`](../ai-agent/) — next workshop step: bounded delegation to AI agents using `editor and edit_authorized` intersections.
+- [`../ai-agent/`](../ai-agent/) — next workshop step: AI agents as first-class principals, granted the same roles as users and bounded to a subtree.
 - [`../../docs/model-explained.md`](../../docs/model-explained.md) — annotated walkthrough of the document-management model.
 - [OpenFGA DSL reference](https://openfga.dev/docs/configuration-language)
 - [`fga model test` documentation](https://openfga.dev/docs/getting-started/cli)

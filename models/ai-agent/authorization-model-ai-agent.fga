@@ -1,11 +1,19 @@
 model
   schema 1.1
 
+# An OpenFGA model for AI agents acting on behalf of users.
+# Agents are first-class principals alongside users: they are granted access
+# through roles (viewer / editor / owner) and are denied by default wherever
+# they hold no role. Risky operations reduce to the editor role:
+#   can_edit   = editor
+#   can_delete = editor
+# Sharing stays with owners and is never granted to agents.
+
 type user
 
 type agent
   relations
-    define principal: [user]
+    define principal: [user]   # informational: which user this agent acts for
 
 type folder
   relations
@@ -14,12 +22,9 @@ type folder
     define editor: [user, agent] or owner or editor from parent
     define viewer: [user, user:*, agent] or editor or viewer from parent
 
-    define edit_authorized:   [user:*, agent] or edit_authorized from parent
-    define delete_authorized: [user:*, agent] or delete_authorized from parent
-
     define can_view:   viewer
-    define can_edit:   editor and edit_authorized
-    define can_delete: editor and delete_authorized
+    define can_edit:   editor
+    define can_delete: editor
     define can_share:  owner
 
 type file
@@ -29,10 +34,7 @@ type file
     define editor: [user, agent] or owner or editor from parent
     define viewer: [user, user:*, agent] or editor or viewer from parent
 
-    define edit_authorized:   [user:*, agent] or edit_authorized from parent
-    define delete_authorized: [user:*, agent] or delete_authorized from parent
-
     define can_view:   viewer
-    define can_edit:   editor and edit_authorized
-    define can_delete: editor and delete_authorized
+    define can_edit:   editor
+    define can_delete: editor
     define can_share:  owner
