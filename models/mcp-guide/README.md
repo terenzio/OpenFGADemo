@@ -1,18 +1,16 @@
 # Document Management with `can_*` Permissions
 
-A document-management authorization model that adds explicit `can_*`
-permission relations on top of the role definitions from the basic
-model in [`../basic/`](../basic/). Authored
-with guidance from the [`openfga-mcp`](https://github.com/openfga) MCP
-server, whose authoring playbook calls out one rule the basic model
-violates:
+A document-management authorization model. It adds explicit `can_*` permission
+relations on top of the roles from the basic model in [`../basic/`](../basic/).
+It was written with help from the [`openfga-mcp`](https://github.com/openfga) MCP
+server. That server's playbook states one rule the basic model breaks:
 
 > It's a common practice to define specific permissions, that can't be
 > directly assigned, using `can_<permission>` relations. […] **Always
 > define permissions in the authorization models.**
 
-This demo applies that rule and ships a runnable test file showing how
-the new permissions behave.
+This demo follows that rule. It also ships a test file you can run to see how the
+new permissions behave.
 
 ---
 
@@ -44,17 +42,16 @@ the new permissions behave.
 
 (Identical block added to `type document`.)
 
-**Why this matters:** application code should check *intent*
-(`can_edit`), not *role* (`editor`). With `can_edit` as a first-class
-relation, you can later decide that some viewers should also be able to
-edit by changing one line in the model — instead of every call site.
+**Why this matters:** app code should check *intent* (`can_edit`), not *role*
+(`editor`). With `can_edit` as its own relation, you can later let some viewers
+edit too. You change one line in the model, not every call site.
 
 | Permission   | Implied by | Rationale                                                                                                     |
 | ------------ | ---------- | ------------------------------------------------------------------------------------------------------------- |
-| `can_view`   | `viewer`   | Public reads, including wildcard and org-member inheritance.                                                  |
-| `can_edit`   | `editor`   | Standard edit; inherits from `owner` via role implication and from ancestor folders via `editor from parent`. |
-| `can_delete` | `editor`   | Deletion is edit-level, not owner-level — matches the MCP guide's example.                                    |
-| `can_share`  | `owner`    | Sharing grants access to others. Restricted to direct owners only — does **not** inherit via parent chain.    |
+| `can_view`   | `viewer`   | Public reads. Includes the wildcard and org-member access.                                                    |
+| `can_edit`   | `editor`   | Normal edit. Comes from `owner` via role implication, and from parent folders via `editor from parent`.        |
+| `can_delete` | `editor`   | Delete is at edit level, not owner level — same as the MCP guide's example.                                    |
+| `can_share`  | `owner`    | Sharing gives access to others. Only direct owners can do it — it does **not** flow down the parent chain.     |
 
 ---
 
@@ -74,9 +71,9 @@ folder:company             ← user:alice (owner)
 document:public-memo       ← user:* (viewer)
 ```
 
-The five test cases below exercise every concept in the model: owner
-cascade, role implication, parent inheritance, userset references,
-wildcards, and `list_objects` enumeration.
+The five test cases below cover every concept in the model: owner cascade, role
+implication, parent inheritance, userset references, wildcards, and
+`list_objects` listing.
 
 ---
 
@@ -102,15 +99,14 @@ assertions:
   can_share:  false
 ```
 
-Alice owns `folder:company`. Owner implies editor (role implication),
-which cascades down the parent chain to `folder:product` and again to
-`document:roadmap` via `editor from parent`. That gives her view,
-edit, and delete.
+Alice owns `folder:company`. Owner implies editor (role implication). That flows
+down the parent chain to `folder:product`, and again to `document:roadmap`, via
+`editor from parent`. So she gets view, edit, and delete.
 
-`can_share` is **false**: the share check requires a direct `owner`
-tuple on the document itself — ownership does not cascade for sharing
-purposes. This is intentional. A share endpoint that auto-fired for
-ancestor owners would let an org admin reshare anyone's documents.
+`can_share` is **false**. The share check needs a direct `owner` tuple on the
+document itself — ownership does not flow down for sharing. This is on purpose. A
+share endpoint that fired for parent owners would let an org admin reshare
+anyone's documents.
 
 ### Test 2 — Org member inheritance via TupleToUserset
 
@@ -124,11 +120,10 @@ assertions:
 ```
 
 Eve is a `member` of `organization:acme`. The tuple
-`(organization:acme#member, viewer, folder:product)` grants viewer to
-every acme member — Eve included. That viewer status cascades to
-`document:roadmap` via `viewer from parent`. She gets `can_view` but
-not `can_edit`, because nothing in the model makes acme members
-editors.
+`(organization:acme#member, viewer, folder:product)` gives viewer to every acme
+member, Eve included. That viewer status flows down to `document:roadmap` via
+`viewer from parent`. She gets `can_view` but not `can_edit`, because nothing in
+the model makes acme members editors.
 
 ### Test 3 — Direct editor on a parent folder
 
@@ -141,10 +136,9 @@ assertions:
   can_share:  false
 ```
 
-Charlie has a direct `editor` tuple on `folder:product`. `editor from
-parent` cascades that to `document:roadmap`, so both `can_edit` and
-`can_delete` (both aliases for `editor`) succeed. `can_share` is
-owner-only, so still false.
+Charlie has a direct `editor` tuple on `folder:product`. `editor from parent`
+passes that to `document:roadmap`. So both `can_edit` and `can_delete` (both
+aliases for `editor`) succeed. `can_share` is owner-only, so it is still false.
 
 ### Test 4 — Wildcard for public read, no public write
 
@@ -156,10 +150,10 @@ assertions:
   can_edit: false
 ```
 
-The tuple `(user:*, viewer, document:public-memo)` makes the doc
-public — any `user:foo` evaluates as a viewer, so `can_view` succeeds.
-`can_edit` fails because the editor relation does not list `user:*` in
-its directly-related types: viewer is public, editor is not.
+The tuple `(user:*, viewer, document:public-memo)` makes the doc public. Any
+`user:foo` counts as a viewer, so `can_view` succeeds. `can_edit` fails because
+the editor relation does not list `user:*` in its directly-related types. Viewer
+is public; editor is not.
 
 ### Test 5 — `list_objects` enumerates Alice's reachable documents
 
@@ -173,10 +167,10 @@ list_objects:
         - document:public-memo
 ```
 
-The owner cascade gets her `document:roadmap`; the wildcard tuple gets
-her `document:public-memo`. The OpenFGA evaluator combines both paths
-during enumeration, so the application can render a "documents you can
-see" list with a single API call instead of N `Check`s.
+The owner cascade gets her `document:roadmap`. The wildcard tuple gets her
+`document:public-memo`. OpenFGA combines both paths while listing. So the app can
+build a "documents you can see" list with one API call, instead of N `Check`
+calls.
 
 ---
 

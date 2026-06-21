@@ -1,17 +1,14 @@
 # Agent Authorization Demo
 
-An OpenFGA model for **AI agents acting on behalf of users**, where
-destructive operations on files (`can_edit`, `can_delete`) require a
-capability the user did not grant simply by giving the agent an
-`editor` role. Default-deny on destructive ops; bounded delegation
-when granted; `can_share` reserved for owners and never delegable to
-agents.
+An OpenFGA model for **AI agents acting on behalf of users**. Here, risky
+operations on files (`can_edit`, `can_delete`) need an extra capability. Giving
+the agent an `editor` role is not enough. Risky ops are denied by default. They
+are allowed only when granted, and only within set limits. `can_share` is kept
+for owners and can never be given to agents.
 
-This sits alongside
-[`../mcp-guide/`](../mcp-guide/),
-which demonstrates the basic OpenFGA permission-alias pattern
-(`can_edit: editor`). This demo extends that with an
-intersection-based capability gate.
+It sits next to [`../mcp-guide/`](../mcp-guide/), which shows the basic OpenFGA
+permission-alias pattern (`can_edit: editor`). This demo adds an
+intersection-based capability gate on top.
 
 ---
 
@@ -41,28 +38,26 @@ type folder
 
 Three ideas combined:
 
-1. **Intersection (`and`).** Being an `editor` is not enough on its
-   own. A separate capability relation must also evaluate to true.
-   If either side is missing, the action is denied.
+1. **Intersection (`and`).** Being an `editor` is not enough on its own. A
+   separate capability relation must also be true. If either side is missing, the
+   action is denied.
 2. **Different default for users vs. agents.** The seed tuple
-   `(user:*, edit_authorized, folder:root)` makes every human pass
-   the gate everywhere — humans are unaffected by the new check.
-   `user:*` does **not** match agents, so agents start with no
-   capability and need an explicit per-folder grant.
-3. **Subtree scoping comes for free.** `or edit_authorized from parent`
-   means a single grant `(agent:bot, edit_authorized, folder:projects)`
-   covers every descendant — and only those descendants. Move the
-   file somewhere else, lose the capability.
+   `(user:*, edit_authorized, folder:root)` lets every human pass the gate
+   everywhere. So humans are not affected by the new check. `user:*` does **not**
+   match agents. So agents start with no capability and need an explicit grant
+   per folder.
+3. **Subtree scoping comes for free.** `or edit_authorized from parent` means one
+   grant `(agent:bot, edit_authorized, folder:projects)` covers every folder and
+   file below it — and only those. Move the file elsewhere, and it loses the
+   capability.
 
-The result: granting an agent `editor` on a folder allows it to view
-content, but a separate explicit grant per capability is required to
-let it write or delete. Sharing is reserved for owners and is never
-delegable to agents at all.
+The result: giving an agent `editor` on a folder lets it view content. But to
+let it write or delete, you must add a separate grant for each capability.
+Sharing stays with owners and can never be given to agents.
 
-> The `agent.principal` relation records which user an agent acts
-> for. It's informational only — useful for audit and
-> application-side guardrails — and does not appear in any permission
-> expression in this demo.
+> The `agent.principal` relation records which user an agent acts for. It is for
+> information only — useful for audit logs and app-side guardrails — and does not
+> appear in any permission expression in this demo.
 
 ---
 
@@ -86,11 +81,11 @@ agent:janitor.principal = user:alice
 
 Two agents, both delegated by alice:
 
-- **`agent:scribe`** — edit-only, scoped to `folder:projects/`.
-- **`agent:janitor`** — edit + delete, scoped to `folder:projects/`.
+- **`agent:scribe`** — edit only, scoped to `folder:projects/`.
+- **`agent:janitor`** — edit and delete, scoped to `folder:projects/`.
 
-Neither agent has any capability on `folder:root` itself, so
-`file:secret` (which lives directly under root) is off-limits to both.
+Neither agent has any capability on `folder:root` itself. So `file:secret` (which
+sits directly under root) is off-limits to both.
 
 ---
 
@@ -116,13 +111,11 @@ assertions:
   can_share:  false   # share requires a direct owner tuple on file:report
 ```
 
-Alice is `owner` of `folder:root`, which cascades `editor` down to
-`file:report` via `editor from parent`. The seeds
-`(user:*, edit_authorized, folder:root)` and
-`(user:*, delete_authorized, folder:root)` satisfy the right side of
-each intersection. `can_share` is false because the share check
-requires a direct `owner` tuple on the file itself — sharing does not
-cascade.
+Alice is `owner` of `folder:root`. That passes `editor` down to `file:report` via
+`editor from parent`. The seeds `(user:*, edit_authorized, folder:root)` and
+`(user:*, delete_authorized, folder:root)` cover the right side of each
+intersection. `can_share` is false because the share check needs a direct `owner`
+tuple on the file itself — sharing does not flow down.
 
 ### Test 2 — agent:scribe can edit but not delete
 
@@ -136,14 +129,13 @@ assertions:
   can_share:  false
 ```
 
-`agent:scribe` is `editor` on `folder:projects` (cascades to
-`file:report`) and has `edit_authorized` on `folder:projects`. Both
-sides of `editor and edit_authorized` are satisfied → `can_edit` is
-true. But scribe has **no** `delete_authorized` tuple anywhere, so
-`can_delete` fails the intersection.
+`agent:scribe` is `editor` on `folder:projects` (which passes down to
+`file:report`) and has `edit_authorized` on `folder:projects`. Both sides of
+`editor and edit_authorized` are true → `can_edit` is true. But scribe has **no**
+`delete_authorized` tuple anywhere, so `can_delete` fails the intersection.
 
-This is the headline case: giving an agent `editor` is not enough by
-itself. The second tuple must be added explicitly, per capability.
+This is the key case: giving an agent `editor` is not enough on its own. You must
+add the second tuple yourself, one per capability.
 
 ### Test 3 — agent:scribe can't even see file:secret
 
@@ -157,10 +149,9 @@ assertions:
   can_share:  false
 ```
 
-`file:secret` lives directly under `folder:root`. `agent:scribe` has
-no `editor` relation on root, and `user:*` does not match agents, so
-neither path applies. Default-deny for agents in scope they were not
-granted.
+`file:secret` sits directly under `folder:root`. `agent:scribe` has no `editor`
+relation on root, and `user:*` does not match agents. So neither path applies.
+Agents are denied by default in any scope they were not granted.
 
 ### Test 4 — agent:janitor's delete is bounded to the projects subtree
 
@@ -177,12 +168,11 @@ granted.
     can_delete: false      # no delete_authorized on root
 ```
 
-The same agent that can delete `file:report` cannot touch
-`file:secret`, even though both files share the same human owner. The
-capability tuple is scoped to a subtree, and the OpenFGA evaluator
-enforces that scope on every Check. Move a file from `folder:projects`
-to under `folder:root` and the agent silently loses access — no app
-code change required.
+The same agent that can delete `file:report` cannot touch `file:secret`, even
+though both files have the same human owner. The capability tuple is scoped to a
+subtree, and OpenFGA enforces that scope on every Check. Move a file from
+`folder:projects` to under `folder:root`, and the agent quietly loses access — no
+app code change needed.
 
 ### Test 5 — `list_objects` enforces the intersection during enumeration
 
@@ -195,11 +185,10 @@ list_objects:
       can_delete: []
 ```
 
-`list_objects(agent:scribe, file, can_edit)` returns only
-`file:report` — the agent cannot even *discover* files outside its
-grant. This matters for autonomy: an agent driven by an LLM that asks
-"which files can I edit?" gets back only the bounded set, never
-`file:secret`.
+`list_objects(agent:scribe, file, can_edit)` returns only `file:report`. The
+agent cannot even *find* files outside its grant. This matters for autonomy: an
+LLM-driven agent that asks "which files can I edit?" gets back only the allowed
+set, never `file:secret`.
 
 ---
 
@@ -212,7 +201,7 @@ grant. This matters for autonomy: an agent driven by an LLM that asks
 | `can_delete` definition | `editor`                         | `editor and delete_authorized`                                   |
 | `can_share` definition  | `owner`                          | `owner` (unchanged)                                              |
 | Capability relations    | none                             | `edit_authorized`, `delete_authorized`                           |
-| Default for non-owners  | role-based                       | role-based for users; default-deny for agents on destructive ops |
+| Default for non-owners  | role-based                       | role-based for users; agents denied by default on risky ops      |
 
 ---
 

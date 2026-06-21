@@ -1,17 +1,16 @@
 # OpenFGA Demo
 
-A hands-on workshop for learning [OpenFGA](https://openfga.dev) — Auth0's
-open-source implementation of Google Zanzibar-style relationship-based access
-control (ReBAC). Three progressively richer authorization models walk you
-through the language, the testing workflow, and a real-world AI-agent
-delegation pattern. A companion Go HTTP server lets you exercise the model
-through a tiny document-management API.
+A hands-on workshop for learning [OpenFGA](https://openfga.dev). OpenFGA is
+Auth0's open-source version of Google Zanzibar. It does relationship-based
+access control (ReBAC). This workshop has three authorization models. Each one
+is a bit more advanced than the last. Together they teach you the language, how
+to test, and a real AI-agent delegation pattern. A small Go HTTP server lets you
+try the model through a tiny document-management API.
 
-> **New to ReBAC, or want the theory behind each step?** See
-> [concepts.md](concepts.md) — it covers the RBAC/ReBAC/Zanzibar background, a
-> deep dive on every concept the workshop teaches, and the OpenFGA MCP server
-> used to author the models. This README stays focused on getting set up and
-> walking through the demos.
+> **New to ReBAC? Want the theory behind each step?** See
+> [concepts.md](concepts.md). It covers the RBAC/ReBAC/Zanzibar background, a
+> deep look at every concept in the workshop, and the OpenFGA MCP server used to
+> write the models. This README only covers setup and the demos.
 
 ---
 
@@ -38,9 +37,8 @@ go version
 
 ## The Three Models
 
-This repo contains three authorization models that build on each other. Work
-through them in order — each one introduces a new OpenFGA concept on top of
-the previous.
+This repo has three authorization models. Each one builds on the one before.
+Do them in order. Each model adds a new OpenFGA concept to the last one.
 
 ```
 OpenFGADemo/
@@ -96,22 +94,22 @@ type document
     define viewer: [user, user:*, organization#member] or editor or viewer from parent
 ```
 
-The four ideas at work here — **role implication**, **`X from Y`** (cascading
-folder permissions), the **`organization#member`** userset reference, and the
-**`user:*`** wildcard — are explained in
+Four ideas are at work here: **role implication**, **`X from Y`** (folder
+permissions that flow down), the **`organization#member`** userset reference,
+and the **`user:*`** wildcard. They are all explained in
 [concepts.md → Core Concepts](concepts.md#core-concepts).
 
 ---
 
 ## Step 2 — Add Permission Relations and Run Your First Tests
 
-The basic model exposes role names (`editor`, `viewer`) directly, which couples
-your application's API surface to today's role structure. The fix is to add
-`can_*` permission relations so app code asks about *intent*, not *roles* — see
+The basic model uses role names (`editor`, `viewer`) directly. This ties your
+app's API to today's roles. The fix: add `can_*` permission relations. Then your
+app code asks about *intent*, not *roles*. See
 [concepts.md → Permission relations](concepts.md#permission-relations-can_).
 
-Read [models/mcp-guide/](models/mcp-guide/) — specifically the four added lines
-on each type:
+Read [models/mcp-guide/](models/mcp-guide/). Look at the four new lines added to
+each type:
 
 ```fga
 define can_view:   viewer
@@ -129,23 +127,22 @@ fga model test --tests tests.fga.yaml
 
 Expected output: **5 tests passed, 0 failed**.
 
-The test file [tests.fga.yaml](models/mcp-guide/tests.fga.yaml) demonstrates:
+The test file [tests.fga.yaml](models/mcp-guide/tests.fga.yaml) shows:
 
-1. Owner of a top folder gets `can_view/edit/delete` cascaded to a grand-child doc — but **not** `can_share` (sharing requires direct ownership).
-2. Org member inherits `can_view` via `organization#member` → folder viewer → document viewer (TupleToUserset across three type boundaries).
-3. Direct editor on a parent folder cascades `can_edit` and `can_delete` to child documents.
-4. Wildcard `(user:*, viewer, document:public-memo)` grants `can_view` to anyone, but not `can_edit`.
-5. `list_objects` returns every document a given user can view.
+1. The owner of a top folder gets `can_view/edit/delete` on a grand-child doc — but **not** `can_share` (sharing needs direct ownership).
+2. An org member gets `can_view` through `organization#member` → folder viewer → document viewer (TupleToUserset across three types).
+3. A direct editor on a parent folder passes `can_edit` and `can_delete` down to child documents.
+4. The wildcard `(user:*, viewer, document:public-memo)` gives `can_view` to anyone, but not `can_edit`.
+5. `list_objects` returns every document a user can view.
 
-**Try it yourself:** add a tuple in `tests.fga.yaml` that grants user:dave
-the `editor` role on `folder:product`, then add an assertion that he
-`can_edit` `document:roadmap`. Re-run the tests.
+**Try it yourself:** in `tests.fga.yaml`, add a tuple that gives user:dave
+the `editor` role on `folder:product`. Then add an assertion that he
+`can_edit` `document:roadmap`. Run the tests again.
 
-> The `mcp-guide` folder name comes from the fact that this model was authored
-> with help from the [`openfga-mcp`](https://github.com/openfga) MCP server,
-> which surfaces the official "Always define permissions in the authorization
-> models" guidance. The full story — what the server is and a worked example of
-> using it — is in
+> The folder is named `mcp-guide` because this model was written with help from
+> the [`openfga-mcp`](https://github.com/openfga) MCP server. That server shares
+> the official rule: "Always define permissions in the authorization models."
+> The full story — what the server is, plus a worked example — is in
 > [concepts.md → The OpenFGA MCP Demo](concepts.md#the-openfga-mcp-demo).
 
 ---
@@ -153,8 +150,8 @@ the `editor` role on `folder:product`, then add an assertion that he
 ## Step 3 — Bounded Delegation to AI Agents
 
 The most advanced model is in [models/ai-agent/](models/ai-agent/). It answers a
-question that comes up the moment you give an AI agent credentials: **how do I
-let an agent edit my files without letting it edit all of them?**
+question you face the moment you give an AI agent credentials: **how do I let an
+agent edit some of my files, but not all of them?**
 
 The pattern uses an intersection (`and`):
 
@@ -179,9 +176,10 @@ type folder
     define can_share:  owner
 ```
 
-The full explanation — why the intersection bounds the agent, why `user:*`
-gives humans a free pass but agents none, and how subtree scoping works — is in
+The full explanation is in
 [concepts.md → Intersections and bounded delegation](concepts.md#intersections-and-and-bounded-delegation).
+It covers why the intersection limits the agent, why `user:*` lets humans pass
+but not agents, and how subtree scoping works.
 
 **Run the tests:**
 
@@ -192,19 +190,19 @@ fga model test --tests tests.fga.yaml
 
 Expected: **5 tests passed, 0 failed**.
 
-The cases worth tracing through by hand:
+Cases worth tracing by hand:
 
-- `agent:scribe` is `editor` and `edit_authorized` on `folder:projects`, so it `can_edit` `file:report` — but it has **no** `delete_authorized`, so `can_delete` is false.
-- `agent:janitor` has `delete_authorized` on `folder:projects` but **not** `folder:root`, so it can delete `file:report` but not `file:secret` (which lives directly under root).
-- `list_objects(agent:scribe, file, can_edit)` returns only `file:report` — the intersection is enforced during enumeration, so the agent can't even *discover* files outside its grant.
+- `agent:scribe` is `editor` and `edit_authorized` on `folder:projects`, so it `can_edit` `file:report`. But it has **no** `delete_authorized`, so `can_delete` is false.
+- `agent:janitor` has `delete_authorized` on `folder:projects` but **not** `folder:root`. So it can delete `file:report` but not `file:secret` (which sits directly under root).
+- `list_objects(agent:scribe, file, can_edit)` returns only `file:report`. The intersection is checked during the listing too, so the agent can't even *find* files outside its grant.
 
 ---
 
 ## Step 4 — Run the Live HTTP Demo (optional)
 
-The `cmd/`, `internal/`, and `scripts/` directories contain a Go HTTP server
-that exercises Check / Write / Delete / ListObjects / Expand against a real
-OpenFGA instance. This brings the model to life beyond `fga model test`.
+The `cmd/`, `internal/`, and `scripts/` directories hold a Go HTTP server. It
+runs Check / Write / Delete / ListObjects / Expand against a real OpenFGA
+instance. This brings the model to life, beyond `fga model test`.
 
 ### 4a. Start the infrastructure
 
@@ -212,10 +210,11 @@ OpenFGA instance. This brings the model to life beyond `fga model test`.
 make up
 ```
 
-Boots MariaDB and the OpenFGA server. The visual
+Starts MariaDB and the OpenFGA server. The visual
 [OpenFGA Playground](https://openfga.dev/docs/getting-started/setup-openfga/playground)
-is now at <http://localhost:3000/playground> (the bare root `http://localhost:3000`
-returns a 404 — the Playground is served under the `/playground` path).
+is now at <http://localhost:3000/playground>. (The bare root
+`http://localhost:3000` returns a 404. The Playground lives under the
+`/playground` path.)
 
 ### 4b. Run the interactive CLI walkthrough
 
@@ -223,8 +222,8 @@ returns a 404 — the Playground is served under the `/playground` path).
 make cli
 ```
 
-Steps through Check, Write, Delete, ListObjects, and Expand with printed
-explanations. Press Enter to advance through each step.
+Walks through Check, Write, Delete, ListObjects, and Expand, with printed notes.
+Press Enter to go to the next step.
 
 ### 4c. Seed and serve
 
@@ -234,10 +233,10 @@ make serve
 ```
 
 `make serve` seeds the demo data and serves in the **same** process. The
-document store is in-memory and per-process, so seeding must happen in the
-process that serves — running `make seed` separately would populate a store
-that disappears when that short-lived process exits, leaving the server with
-no documents (and every lookup returning `404`).
+document store is in memory and lives only inside one process. So seeding must
+happen in the process that serves. If you run `make seed` on its own, it fills a
+store that vanishes when that short process exits. The server would then have no
+documents, and every lookup would return `404`.
 
 ```bash
 # Terminal 2 — call the API
@@ -266,11 +265,11 @@ make demo
 
 ### 4d. Browser walkthrough (no Postman)
 
-The [`web/`](web/) directory holds a zero-install browser version of the same
-8-chapter raw-API walkthrough that the Postman collection
-([postman/](postman/)) and `make cli` drive. It calls the OpenFGA REST API on
-`:8080` directly from the browser (OpenFGA returns `Access-Control-Allow-Origin: *`,
-so no proxy is needed).
+The [`web/`](web/) directory holds a browser version of the same 8-chapter
+raw-API walkthrough. It needs no install. The Postman collection
+([postman/](postman/)) and `make cli` run the same steps. It calls the OpenFGA
+REST API on `:8080` straight from the browser. (OpenFGA returns
+`Access-Control-Allow-Origin: *`, so you need no proxy.)
 
 ```bash
 make up    # OpenFGA on :8080 (if not already running)
@@ -279,18 +278,18 @@ make web   # serves web/ on http://localhost:8090
 
 Then open:
 
-- <http://localhost:8090/> — **narrated walkthrough.** One card per chapter with a
-  per-step **Run** button and a **Run all chapters** button. Chapter 1 captures
-  `store_id` / `model_id` automatically (like the Postman test scripts); every
-  Check shows expected-vs-actual ALLOWED/DENIED with a ✓/✗ badge.
+- <http://localhost:8090/> — **narrated walkthrough.** One card per chapter, with
+  a **Run** button per step and a **Run all chapters** button. Chapter 1 grabs
+  `store_id` / `model_id` for you (like the Postman test scripts). Every Check
+  shows expected vs. actual ALLOWED/DENIED with a ✓/✗ badge.
 - <http://localhost:8090/swagger.html> — **Swagger UI**, a raw-API reference
-  rendered from [web/openfga-openapi.json](web/openfga-openapi.json). Use it to
-  poke individual endpoints; it does not enforce order or auto-capture IDs.
+  built from [web/openfga-openapi.json](web/openfga-openapi.json). Use it to try
+  single endpoints. It does not enforce order or grab IDs for you.
 
-Because `/write` is non-idempotent, re-running the demo on the same store fails
-with HTTP 400 on already-written tuples — click **Create Store** again for a
-fresh store, or use the Appendix → **Reset Chapter 6** step, exactly as in the
-Postman collection.
+`/write` is not idempotent. So if you run the demo again on the same store, it
+fails with HTTP 400 on tuples that already exist. To fix this, click **Create
+Store** again for a fresh store, or use the Appendix → **Reset Chapter 6** step.
+This is the same as in the Postman collection.
 
 ### 4e. Tear down
 
@@ -298,7 +297,7 @@ Postman collection.
 make down
 ```
 
-Stops all containers and removes volumes.
+Stops all containers and removes the volumes.
 
 ---
 
@@ -337,5 +336,5 @@ OpenFGADemo/
 ## Where to Next
 
 - **Theory & concepts:** [concepts.md](concepts.md) — RBAC/ReBAC/Zanzibar
-  background, a deep dive on every concept above, and the OpenFGA MCP demo.
+  background, a deep look at every concept above, and the OpenFGA MCP demo.
 - [OpenFGA documentation](https://openfga.dev/docs) · [FGA modeling concepts](https://openfga.dev/docs/concepts) · [DSL reference](https://openfga.dev/docs/configuration-language)
