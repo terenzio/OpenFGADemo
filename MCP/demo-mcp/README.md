@@ -1,16 +1,21 @@
 clone repo
 
-## 1.  RUNNING YOUR LOCAL MCP SERVER
+## 0. PREREQUISITES
+- Go installed
+- An OpenFGA instance running locally (defaults to `http://localhost:8080`)
+- A store created in that instance, with its ID set as `STORE_ID` in `main.go`
+
+## 1. RUNNING YOUR LOCAL MCP SERVER
 `cd MCP/demo-mcp`
 
 `go mod tidy`
 
-optional: 
-    in main.go set constants to match your environment
-    
-    - FGA_API_URL: the url to your local OpenFGA
-    - ANTHROPIC_API_KEY: your api key, blank for demo will return a mock response
-    - LOCAL_MCP_PORT: change if you 8085 is occupied
+in main.go set constants to match your environment:
+
+    - STORE_ID: required, your OpenFGA store ID — the server exits on startup if this is empty
+    - FGA_API_URL: optional, the url to your local OpenFGA
+    - ANTHROPIC_API_KEY: optional, your api key, blank for demo will return a mock response
+    - LOCAL_MCP_PORT: optional, change if you 8085 is occupied
 
 
 `go run main.go`
@@ -20,7 +25,7 @@ check that your application is listening on the port set for LOCAL_MCP_PORT
 `2026/0X/2X 01:03:51 Listening on :8085`
 
 
-## 2. CONNECT YOUR LOCAL AGENT TO THE LOCAL MCP (claude example)
+## 2. REGISTER THE MCP SERVER WITH YOUR AGENT (claude example)
 
 Use the `claude mcp add` CLI rather than hand-editing JSON under `projects.<path>.mcpServers` — that entry is keyed on an exact path string, so running the command from a subdirectory (e.g. `MCP/demo-mcp`) or a path with a trailing slash silently creates a separate, invisible entry that won't show up for your actual project directory.
 
@@ -59,12 +64,12 @@ Alternative (manual edit): open `~/.claude.json` (`code ~/.claude.json`) and add
 }
 ```
 
-## 3. CONNECT YOUR MCP SERVER TO YOUR AGENT (via terminal)
+## 3. VERIFY THE CONNECTION (via terminal)
 1. start your agent
 ```
 claude
 ```
-2. use the /mcp command to list available mcps, if your mcp is up and running, you should should see something like:
+2. use the /mcp command to list available mcps, if your mcp is up and running, you should see something like:
    `org-mcp · ✔ connected · 2 tools` 
 
    - if you need to debug the connction you can try to reconnect manually and see if any errors pop up.
@@ -75,13 +80,12 @@ claude
 If it's working your agent will tell you that you dont have access.
 
 ## 5. Initial tuple setup
-add the following tuples to your OpenFGA (using the /write API ) to represent the test data we will use in the demo
 
+First, write the authorization model from `auth-model/tools-model.fga` to your store (e.g. via the `fga` CLI: `fga model write --store-id <your store id> auth-model/tools-model.fga`, or the `/stores/{store_id}/authorization-models` API).
 
-```
-"user": "folder:admins", "relation": "parent","object": "document:salaries.csv"}
-"user": "folder:public", "relation": "parent","object": "document:team-members.csv"}
-```
+Note: the model has a couple of `# 1.` / `# 2.` markers (e.g. for a `tool` and `agent` type) that get filled in live during the demo — don't worry if those aren't defined yet.
+
+Then add the following tuples to your OpenFGA (using the /write API) to represent the test data we will use in the demo:
 
 EXAMPLE:
 ```
@@ -103,6 +107,16 @@ curl --location 'http://localhost:8080/stores/[your store id here]/write' \
         ]
     }
 }'
+```
+
+These tuples only link the folders to their documents — they don't grant anyone access yet. `readCSV` checks `can_view` directly on the file's parent folder (e.g. `folder:admins`), so to actually grant a caller access, write a `viewer` tuple on the folder itself:
+
+```
+{
+    "user": "user:<your-test-identity>",
+    "relation": "viewer",
+    "object": "folder:admins"
+}
 ```
 
 Now you can follow along with the demo slides to create the required tuples and grant access to your agent!
