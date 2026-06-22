@@ -1,3 +1,67 @@
+# DEVOPS DAY WORKSHOP QUICK SETUP:
+
+Run the following commands to start the infrastructure and the web walkthrough. 
+The web walkthrough is a no-install, browser-based version of the raw-API demo.
+
+1. Start the infrastructure - starts MariaDB and the OpenFGA server.
+
+    ```bash
+      make up
+    ```
+
+2. Start the web walkthrough on http://localhost:8090
+
+    ```bash
+      make web
+    ```
+
+
+NOTE: If your system don't have `make`, you can run the same commands directly:
+
+1. For the infrastructure:
+    ```bash
+      docker compose up -d
+    ``` 
+
+2. Then for the web walkthrough:
+    ```bash
+      cd web && python3 -m http.server 8090
+    ``` 
+
+  Raise your hand if you have any issues with setup!
+
+OPTIONAL SETUP: 
+
+1. MariaDB Connections:
+
+    ```bash
+        Host: 127.0.0.1
+        Port: 3306
+        Username: openfga
+        Password: openfga
+        Database: openfga
+    ```
+  
+2. To run the FGA ClI Tests:
+
+    ```bash
+        brew install openfga/tap/fga
+    ```
+
+3. To install the Visual Studio Code Extension for OpenFGA:
+
+    ```bash
+        Search for "OpenFGA" in the VSCode extensions marketplace and install the official extension by openfga.dev.  
+    ```
+
+4. To see the Playground:
+    ```bash
+      Open http://localhost:3000/playground in your browser. The Playground is a visual interface for exploring your OpenFGA models and data. You can run queries, visualize relationships, and debug your authorization logic. 
+      This is only supported by Firefox. Chrome will not work due to Chrome Private Network Access security policy. If you want to use Chrome, you can disable the security policy for localhost.
+    ```
+
+---
+
 # OpenFGA Demo
 
 A hands-on workshop for learning [OpenFGA](https://openfga.dev). OpenFGA is
