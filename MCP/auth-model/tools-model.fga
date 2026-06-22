@@ -1,0 +1,39 @@
+model
+  schema 1.1
+
+type user
+
+# add values tool / agent types here
+type agent
+  relations
+    define owner: [user]
+
+type tool
+  relations   
+        define owner: [user]
+        define user: [user, agent, organization#member]
+
+        define can_use: user or owner
+
+type organization
+  relations
+    define member: [user, agent]
+    
+type folder
+  relations
+    define owner: [user]
+    define parent: [folder]
+    define editor: [user, organization#member] or owner or editor from parent
+    define viewer: [user, user:*, organization#member, agent] or editor or viewer from parent
+
+    define can_view: viewer
+
+
+type document
+  relations
+    define parent: [folder]
+    define owner: [user]
+    define editor: [user, organization#member] or owner or editor from parent
+    define viewer: [user, user:*, organization#member, agent] or editor or viewer from parent
+
+    define can_view: viewer
