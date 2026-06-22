@@ -3,28 +3,19 @@ model
 
 type user
 
-# add values tool / agent types here
-type agent
-  relations
-    define owner: [user]
+# 1. add values tool / agent types here
 
-type tool
-  relations   
-        define owner: [user]
-        define user: [user, agent, organization#member]
-
-        define can_use: user or owner
 
 type organization
   relations
-    define member: [user, agent]
+    define member: [user] #2. add agent to members
     
 type folder
   relations
     define owner: [user]
     define parent: [folder]
     define editor: [user, organization#member] or owner or editor from parent
-    define viewer: [user, user:*, organization#member, agent] or editor or viewer from parent
+    define viewer: [user, user:*, organization#member] or editor or viewer from parent #1. add agent to viewer
 
     define can_view: viewer
 
@@ -34,6 +25,6 @@ type document
     define parent: [folder]
     define owner: [user]
     define editor: [user, organization#member] or owner or editor from parent
-    define viewer: [user, user:*, organization#member, agent] or editor or viewer from parent
+    define viewer: [user, user:*, organization#member] or editor or viewer from parent # 1. add agent to viewer
 
     define can_view: viewer
