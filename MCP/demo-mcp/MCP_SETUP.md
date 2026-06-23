@@ -85,9 +85,8 @@ First, write the authorization model from `auth-model/tools-model.fga` to your s
 
 Note: the model has a couple of `# 1.` / `# 2.` markers (e.g. for a `tool` and `agent` type) that get filled in live during the demo — don't worry if those aren't defined yet.
 
-Then add the following tuples to your OpenFGA (using the /write API) to represent the test data we will use in the demo:
+Then add tuples to your OpenFGA (using the /write API) to grant your test identity `can_use` on the tools you want it to access, e.g.:
 
-EXAMPLE:
 ```
 curl --location 'http://localhost:8080/stores/[your store id here]/write' \
 --header 'Content-Type: application/json' \
@@ -95,28 +94,13 @@ curl --location 'http://localhost:8080/stores/[your store id here]/write' \
     "writes": {
         "tuple_keys": [
             {
-                "user": "folder:admins",
-                "relation": "parent",
-                "object": "document:salaries.csv"
-            },
-            {
-                "user": "folder:public",
-                "relation": "parent",
-                "object": "document:team-members.csv"
+                "user": "agent:<your-test-identity>",
+                "relation": "user",
+                "object": "tool:list-team"
             }
         ]
     }
 }'
-```
-
-These tuples only link the folders to their documents — they don't grant anyone access yet. `readCSV` checks `can_view` directly on the file's parent folder (e.g. `folder:admins`), so to actually grant a caller access, write a `viewer` tuple on the folder itself:
-
-```
-{
-    "user": "user:<your-test-identity>",
-    "relation": "viewer",
-    "object": "folder:admins"
-}
 ```
 
 Now you can follow along with the demo slides to create the required tuples and grant access to your agent!

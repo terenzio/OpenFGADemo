@@ -3,14 +3,12 @@ package main
 import (
 	"bytes"
 	"context"
-	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
-	"path/filepath"
 	"strings"
 
 	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
@@ -18,8 +16,6 @@ import (
 
 // DEMO CONSTANTS
 const (
-	PUBLIC_FILE_PATH    = "../public"
-	ADMINS_FILE_PATH    = "../admins"
 	ANTHROPIC_API_KEY   = ""
 	FGA_API_URL         = "http://localhost:8080"
 	INTENT_PARSER_MODEL = "claude-haiku-4-5"
@@ -103,86 +99,42 @@ type SalaryRecord struct {
 	Salary string
 }
 
-// readCSV opens a CSV file at path and returns all rows including the header.
-// Checks can_view on the parent folder via FGA before reading — folder-level auth means
-// two files with the same name in different directories (e.g. public/ vs admins-only/)
-// are correctly distinguished without needing per-file tuples.
-func readCSV(ctx context.Context, path string) ([][]string, error) {
-
-	folderObj := "folder:" + filepath.Base(filepath.Dir(path))
-	err := fgaFileCheck(ctx, "can_view", folderObj)
-	if err != nil {
-		return nil, err
-	}
-
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, fmt.Errorf("could not open %s: %w", path, err)
-	}
-	defer f.Close()
-
-	records, err := csv.NewReader(f).ReadAll()
-	if err != nil {
-		return nil, fmt.Errorf("could not parse %s: %w", path, err)
-	}
-	return records, nil
+// teamMembers is hardcoded demo data standing in for public/team-members.csv.
+var teamMembers = []TeamMember{
+	{Name: "abraham", ID: "003", Role: "engineer", Team: "it"},
+	{Name: "terence", ID: "002", Role: "engineer", Team: "it"},
+	{Name: "cc", ID: "001", Role: "ceo", Team: "office of the ceo"},
 }
 
-// ListTeam reads team members from the public CSV and returns name → id/role/team.
+// salaryRecords is hardcoded demo data standing in for admins/salaries.csv.
+var salaryRecords = []SalaryRecord{
+	{Name: "Elon R. Musk", Salary: "132298849867.00"},
+	{Name: "Dylan Field", Salary: "864358634.00"},
+	{Name: "Dara Khosrowshahi", Salary: "35595827.00"},
+	{Name: "David M. Solomon", Salary: "118891594.00"},
+}
+
+// ListTeam returns hardcoded demo team-member data.
 func ListTeam(
 	ctx context.Context,
 	req *mcpsdk.CallToolRequest,
 	input ListTeamInput,
 ) (*mcpsdk.CallToolResult, map[string]string, error) {
-	records, err := readCSV(ctx, PUBLIC_FILE_PATH+"/team-members.csv")
-	if err != nil {
-		return nil, nil, err
-	}
-
-	var members []TeamMember
-	if len(records) > 0 {
-		for _, row := range records[1:] { // skip header
-			if len(row) >= 4 {
-				members = append(members, TeamMember{
-					Name: row[0],
-					ID:   row[1],
-					Role: row[2],
-					Team: row[3],
-				})
-			}
-		}
-	}
-
-	result := make(map[string]string, len(members))
-	for _, m := range members {
+	result := make(map[string]string, len(teamMembers))
+	for _, m := range teamMembers {
 		result[m.Name] = fmt.Sprintf("id:%s role:%s team:%s", m.ID, m.Role, m.Team)
 	}
 	return nil, result, nil
 }
 
-// ListSalaries reads salary data from the admins-only CSV and returns name → salary.
+// ListSalaries returns hardcoded demo salary data.
 func ListSalaries(
 	ctx context.Context,
 	req *mcpsdk.CallToolRequest,
 	input ListSalariesInput,
 ) (*mcpsdk.CallToolResult, map[string]string, error) {
-
-	records, err := readCSV(ctx, ADMINS_FILE_PATH+"/salaries.csv")
-	if err != nil {
-		return nil, nil, err
-	}
-
-	var entries []SalaryRecord
-	if len(records) > 0 {
-		for _, row := range records[1:] { // skip header
-			if len(row) >= 2 {
-				entries = append(entries, SalaryRecord{Name: row[0], Salary: row[1]})
-			}
-		}
-	}
-
-	salaries := make(map[string]string, len(entries))
-	for _, e := range entries {
+	salaries := make(map[string]string, len(salaryRecords))
+	for _, e := range salaryRecords {
 		salaries[e.Name] = e.Salary
 	}
 	return nil, salaries, nil
@@ -228,27 +180,6 @@ type fgaCheckBody struct {
 // fgaCheckResponse is the response payload from the OpenFGA /check endpoint.
 type fgaCheckResponse struct {
 	Allowed bool `json:"allowed"`
-}
-
-// fgaFileCheck extracts the FGA user from ctx and verifies they have relation on a file object.
-// Returns nil if no user is in context (skips the check) or if access is granted.
-func fgaFileCheck(ctx context.Context, relation, object string) error {
-	user, ok := ctx.Value(ctxUserKey).(string)
-	if !ok || user == "" {
-		return fmt.Errorf("no user set")
-	}
-
-	log.Printf("File Check: %s, %s %s", user, relation, object)
-
-	allowed, err := Check(user, relation, object)
-	if err != nil {
-		return fmt.Errorf("authorization check failed: %w", err)
-	}
-	log.Printf("file allowed: %t", allowed)
-	if !allowed {
-		return fmt.Errorf("forbidden")
-	}
-	return nil
 }
 
 // Check -  checks with openfga whether user has the given relation on object via the OpenFGA HTTP API.
