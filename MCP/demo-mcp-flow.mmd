@@ -1,0 +1,40 @@
+sequenceDiagram
+    actor User
+    participant Agent as AI Agent<br/>(Claude)
+    participant MCP as MCP Server<br/>:8085/mcp
+    participant Intent as Intent Parser<br/>Middleware
+    participant FGA as FGA Auth<br/>Middleware
+    participant Anthropic as Anthropic API<br/>(claude-haiku-4-5)
+    participant OpenFGA as OpenFGA<br/>:8080
+    participant Tool as Tool Handler<br/>(list-team / list-salaries)
+
+    User->>Agent: "Show me the team" /<br/>"Show me salaries"
+    Agent->>MCP: POST /mcp<br/>x-api-key: alice<br/>x-user-intent: "Show me the team"<br/>body: tools/call { name: "list-team" }
+
+    MCP->>Intent: forward request
+
+    alt x-user-intent header present
+        Intent->>Anthropic: Does calling list-team serve<br/>"Show me the team"?
+        Anthropic-->>Intent: { "allowed": true, "reason": "..." }
+    end
+
+    alt intent not aligned
+        Intent-->>Agent: 403 Forbidden
+    else intent aligned (or no intent header)
+        Intent->>FGA: forward request
+
+        FGA->>FGA: extract user → "agent:alice"
+        FGA->>OpenFGA: Check: agent:alice can_use tool:list-team
+        OpenFGA-->>FGA: { "allowed": true }
+
+        alt not allowed
+            FGA-->>Agent: 403 Forbidden
+        else allowed
+            FGA->>Tool: forward request
+            Tool-->>FGA: team member data
+            FGA-->>Intent: response
+            Intent-->>MCP: response
+            MCP-->>Agent: tool result
+            Agent-->>User: formatted response
+        end
+    end
