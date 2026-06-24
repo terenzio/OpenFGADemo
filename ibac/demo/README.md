@@ -1,12 +1,10 @@
-clone repo
-
 ## 0. PREREQUISITES
 - Go installed
 - An OpenFGA instance running locally (defaults to `http://localhost:8080`)
 - A store created in that instance, with its ID set as `STORE_ID` in `main.go`
 
 ## 1. RUNNING YOUR LOCAL MCP SERVER
-`cd MCP/demo-mcp`
+`cd ibac/demo`
 
 `go mod tidy`
 
